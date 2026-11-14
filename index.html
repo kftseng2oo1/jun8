@@ -24,7 +24,18 @@
   canvas{display:block;touch-action:none;position:fixed;inset:0}
   .hud{position:fixed;left:0;right:0;pointer-events:none;text-align:center;padding:0 16px}
   #top{top:0;padding-top:calc(14px + env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:center;text-align:left}
-  #top h1,#count,#vbtn{white-space:nowrap}
+  #top h1,#count,#vbtn,#cambtn{white-space:nowrap}
+  #cambtn{pointer-events:auto;font:inherit;font-size:calc(12px*var(--ui));background:rgba(10,14,28,.55);color:#efe4cc;
+    border:1px solid rgba(239,228,204,.3);border-radius:1.2em;padding:.3em .8em;margin-left:auto;display:none}
+  #cambtn + #vbtn{margin-left:6px}
+  #fcp{position:fixed;left:0;right:0;bottom:0;display:none;z-index:6;padding:0 8px calc(10px + env(safe-area-inset-bottom));text-align:center}
+  #fcp .bar{display:inline-flex;flex-wrap:wrap;justify-content:center;gap:6px;background:rgba(14,20,38,.85);border:1px solid rgba(227,177,74,.4);
+    border-radius:16px;padding:10px}
+  #fcp .tip{width:100%;font-size:calc(12px*var(--ui));opacity:.7;margin-bottom:2px;letter-spacing:.08em}
+  #fcp button{font:inherit;font-size:calc(13px*var(--ui));background:rgba(10,14,28,.6);color:#efe4cc;border:1px solid rgba(239,228,204,.3);
+    border-radius:1.2em;padding:.35em .85em}
+  #fcp button.on{background:linear-gradient(#c2483d,#8e2b23);border-color:#e3b14a;color:#fff3dc}
+  #fcp #fcExit{background:linear-gradient(#c2483d,#8e2b23);color:#fff3dc;border:0}
   #top h1{font-size:calc(17px*var(--ui));margin:0;letter-spacing:.15em;font-weight:700;text-shadow:0 0 12px #000}
   #count{font-size:calc(13px*var(--ui));opacity:.8;text-shadow:0 0 8px #000}
   #hint{bottom:0;padding-bottom:calc(22px + env(safe-area-inset-bottom));font-size:calc(15px*var(--ui));line-height:1.6;
@@ -124,12 +135,17 @@
 </script>
 </head>
 <body>
-<div id="top" class="hud"><h1>口湖牽水䔲</h1><button id="vbtn"></button><div id="count"></div></div>
+<div id="top" class="hud"><h1>口湖牽水䔲</h1><button id="cambtn">🎥 視角</button><button id="vbtn"></button><div id="count"></div></div>
 <button id="back">← 返回</button>
 <div id="msg"></div>
 <div id="cap"></div>
 <button id="skip">跳過序章 ›</button>
 <div id="fade"></div>
+<div id="fcp"><div class="bar">
+  <div class="tip">單指拖曳旋轉・雙指縮放與平移</div>
+  <button id="fcAuto">自動環繞</button><button data-s="all">全景</button><button data-s="temple">萬善祠</button>
+  <button data-s="big">大水䔲</button><button data-s="sky">鳥瞰</button><button data-s="low">低角度</button><button id="fcExit">結束</button>
+</div></div>
 <div id="bzp"><div class="panel">
   <h3>大水䔲 燈控</h3>
   <div class="r"><span>轉速</span><input type="range" id="bzSpeed" min="0" max="100"><span class="v" id="bzSpeedV"></span></div>
@@ -185,6 +201,7 @@
 <script type="module">
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const V3 = THREE.Vector3;
 const $ = s => document.querySelector(s);
@@ -285,7 +302,37 @@ water.position.set(0, 0.02, 52);
 scene.add(water);
 
 let bigZhuangGroup = null;
-const BZ = { leds: [] };
+const BZ = { leds: [], flags: [], u: { value: 0 } };
+function animMural(mat, flow) {   // 壁畫：浪紋流動、輕微起伏、光帶掃過、星點閃爍
+  mat.onBeforeCompile = sh => {
+    sh.uniforms.uTime = BZ.u; sh.uniforms.uFlow = { value: flow };
+    sh.fragmentShader = 'uniform float uTime;\nuniform float uFlow;\n' + sh.fragmentShader
+      .replace('#include <map_fragment>', `
+        vec2 wuv = vMapUv;
+        wuv.x += uTime * .025 * uFlow + sin(vMapUv.y * 14.0 + uTime * 1.8) * .008;
+        wuv.y += sin(vMapUv.x * 40.0 + uTime * 2.2) * .01 * (abs(uFlow) + .3) + sin(vMapUv.x * 9.0 - uTime * 1.3) * .006;
+        vec4 sampledDiffuseColor = texture2D( map, wuv );
+        diffuseColor *= sampledDiffuseColor;`)
+      .replace('#include <emissivemap_fragment>', `
+        vec4 emissiveColor = texture2D( emissiveMap, wuv );
+        totalEmissiveRadiance *= emissiveColor.rgb;
+        float sweep = smoothstep(.06, 0., abs(fract(vMapUv.y * .6 - uTime * .14) - .5));
+        totalEmissiveRadiance += emissive * sweep * .35;
+        float tw = pow(max(0., sin(vMapUv.x * 230.0 + uTime * 3.1) * sin(vMapUv.y * 140.0 - uTime * 2.3)), 40.0);
+        totalEmissiveRadiance += emissive * tw * 2.0;`);
+  };
+}
+function animSkirt(mat) {   // 彩布裙隨風飄動
+  mat.onBeforeCompile = sh => {
+    sh.uniforms.uTime = BZ.u;
+    sh.vertexShader = 'uniform float uTime;\n' + sh.vertexShader.replace('#include <begin_vertex>', `
+      vec3 transformed = vec3(position);
+      float a = atan(position.z, position.x);
+      float k = clamp((.275 - position.y) / .55, 0., 1.);
+      transformed.xz *= 1. + k * (.05 + .05 * sin(a * 8. + uTime * 3.));
+      transformed.y += k * .05 * sin(a * 6. - uTime * 2.5);`);
+  };
+}
 /* ---------------- 萬善祠：重簷廟宇、兩側樓閣、石獅、紅旗 ---------------- */
 function canvasTex(w, h, paint) {
   const c = document.createElement('canvas'); c.width = w; c.height = h; paint(c.getContext('2d'), w, h);
@@ -429,15 +476,68 @@ function archShape(w, h) {
     for (const dx of [-2.3, 2.3]) { const c = new THREE.Mesh(new THREE.CylinderGeometry(.16, .16, 9.2, 10), M_RED); c.position.set(x + dx, 5.6, z + 2.45); g.add(c); }
     addRoof(g, 5, 4.8, 1.7, .9, .8, x, 10.2, z, true);
   }
-  // 石獅一對
-  for (const sx of [-1, 1]) {
-    const L = new THREE.Group();
-    const base = new THREE.Mesh(new THREE.BoxGeometry(.8, .5, .8), M_PLINTH); base.position.y = .25;
-    const body = new THREE.Mesh(new THREE.SphereGeometry(.34, 14, 10), M_WHITE); body.scale.set(.9, 1.15, 1.2); body.position.set(0, .82, -.05);
-    const head = new THREE.Mesh(new THREE.SphereGeometry(.26, 14, 10), M_WHITE); head.position.set(0, 1.28, .14);
-    const mane = new THREE.Mesh(new THREE.TorusGeometry(.24, .08, 8, 16), M_WHITE); mane.position.set(0, 1.26, .08);
-    L.add(base, body, head, mane); L.position.set(sx * 1.6, 1, -15.0); g.add(L);
+  // 石獅一對（公獅按繡球、母獅護幼獅），回紋石座
+  const stoneM = new THREE.MeshStandardMaterial({ color: 0xd9d5cb, roughness: .62, emissive: 0x2a2826, emissiveIntensity: .5 });
+  const maneM = new THREE.MeshStandardMaterial({ color: 0xc6c0b3, roughness: .7, emissive: 0x201e1c, emissiveIntensity: .5 });
+  const darkM = new THREE.MeshStandardMaterial({ color: 0x2a2622, roughness: .5 });
+  const fretTex = canvasTex(256, 64, (x, w, h) => {
+    x.fillStyle = '#9a968e'; x.fillRect(0, 0, w, h);
+    x.strokeStyle = '#6a665e'; x.lineWidth = 3;
+    for (let i = 0; i < w; i += 32) { x.beginPath(); x.moveTo(i + 4, 54); x.lineTo(i + 4, 10); x.lineTo(i + 26, 10); x.lineTo(i + 26, 40); x.lineTo(i + 12, 40); x.lineTo(i + 12, 22); x.lineTo(i + 20, 22); x.stroke(); }
+    x.fillStyle = '#7a766e'; x.fillRect(0, 0, w, 4); x.fillRect(0, h - 4, w, 4);
+  });
+  const fretM = new THREE.MeshStandardMaterial({ map: fretTex, roughness: .8 });
+  function cub(parent, x, y, z) {   // 幼獅：仰躺在母獅爪下
+    const C = new THREE.Group(); C.position.set(x, y, z); C.rotation.set(-.5, 0, .3); parent.add(C);
+    const b = new THREE.Mesh(new THREE.SphereGeometry(.09, 12, 10), stoneM); b.scale.set(1, .8, 1.3); C.add(b);
+    const h = new THREE.Mesh(new THREE.SphereGeometry(.07, 12, 10), stoneM); h.position.set(0, .06, .1); C.add(h);
+    for (let i = 0; i < 8; i++) { const a = i / 8 * Math.PI * 2, c = new THREE.Mesh(new THREE.SphereGeometry(.028, 8, 6), maneM); c.position.set(Math.cos(a) * .075, .06 + Math.sin(a) * .075, .06); C.add(c); }
+    [-1, 1].forEach(sd => { const e = new THREE.Mesh(new THREE.SphereGeometry(.012, 6, 6), darkM); e.position.set(sd * .028, .08, .165); C.add(e); });
   }
+  function lion(male) {
+    const L = new THREE.Group();
+    const haunch = new THREE.Mesh(new THREE.SphereGeometry(.3, 22, 16), stoneM); haunch.scale.set(1.15, .9, 1.25); haunch.position.set(0, .26, -.15); L.add(haunch);
+    const chest = new THREE.Mesh(new THREE.SphereGeometry(.24, 22, 16), stoneM); chest.scale.set(1, 1.35, .95); chest.position.set(0, .56, .08); L.add(chest);
+    [-1, 1].forEach(sd => {
+      const lift = (male ? sd > 0 : sd < 0);   // 按球／護幼的那隻前爪略抬
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(.065, .075, .48, 12), stoneM); leg.position.set(sd * .13, lift ? .31 : .26, .24); leg.rotation.x = lift ? -.35 : -.12; L.add(leg);
+      const paw = new THREE.Mesh(new THREE.SphereGeometry(.085, 14, 10), stoneM); paw.scale.set(1, .7, 1.3); paw.position.set(sd * .13 + (lift ? sd * .06 : 0), lift ? .17 : .05, lift ? .36 : .32); L.add(paw);
+      for (let k = -1; k <= 1; k++) { const toe = new THREE.Mesh(new THREE.SphereGeometry(.03, 8, 6), stoneM); toe.position.set(paw.position.x + k * .045, paw.position.y - .01, paw.position.z + .1); L.add(toe); }
+      const thigh = new THREE.Mesh(new THREE.SphereGeometry(.17, 16, 12), stoneM); thigh.scale.set(.7, 1, 1.2); thigh.position.set(sd * .26, .2, -.12); L.add(thigh);
+    });
+    if (male) {   // 繡球
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(.11, 20, 14), stoneM); ball.position.set(.22, .1, .4); L.add(ball);
+      for (const ry of [0, Math.PI / 2, Math.PI / 4]) { const band = new THREE.Mesh(new THREE.TorusGeometry(.11, .012, 6, 24), maneM); band.position.copy(ball.position); band.rotation.y = ry; L.add(band); }
+    } else cub(L, -.24, .1, .38);
+    const head = new THREE.Mesh(new THREE.SphereGeometry(.19, 22, 16), stoneM); head.scale.set(1.05, 1, .95); head.position.set(0, .92, .16); L.add(head);
+    for (let r = 0; r < (male ? 3 : 2); r++) {   // 鬃毛捲（公獅三圈、母獅兩圈）
+      const n = [18, 14, 22][r], rad = [.23, .16, .29][r];
+      for (let i = 0; i < n; i++) {
+        const a = i / n * Math.PI * 2, c = new THREE.Mesh(new THREE.SphereGeometry([.072, .06, .065][r], 10, 8), maneM);
+        c.position.set(Math.cos(a) * rad, .92 + Math.sin(a) * rad * 1.05, .06 - r * .08 - (r === 2 ? .04 : 0)); L.add(c);
+      }
+    }
+    for (let i = 0; i < 5; i++) { const c = new THREE.Mesh(new THREE.SphereGeometry(.05, 8, 6), maneM); c.position.set((i - 2) * .07, .62 - Math.abs(i - 2) * .03, .27); L.add(c); }   // 胸前鬃
+    const muz = new THREE.Mesh(new THREE.SphereGeometry(.1, 16, 12), stoneM); muz.scale.set(1.25, .8, .9); muz.position.set(0, .85, .32); L.add(muz);
+    const nose = new THREE.Mesh(new THREE.SphereGeometry(.035, 10, 8), maneM); nose.position.set(0, .89, .41); L.add(nose);
+    const mouth = new THREE.Mesh(new THREE.BoxGeometry(.15, male ? .045 : .03, .08), darkM); mouth.position.set(0, .79, .35); L.add(mouth);
+    if (male) { const pearl = new THREE.Mesh(new THREE.SphereGeometry(.03, 10, 8), stoneM); pearl.position.set(0, .79, .38); L.add(pearl); }   // 口含石珠
+    [-1, 1].forEach(sd => {
+      const eye = new THREE.Mesh(new THREE.SphereGeometry(.032, 10, 8), darkM); eye.position.set(sd * .075, .99, .31); L.add(eye);
+      const brow = new THREE.Mesh(new THREE.TorusGeometry(.04, .013, 6, 10, Math.PI), maneM); brow.position.set(sd * .075, 1.01, .32); L.add(brow);
+      const ear = new THREE.Mesh(new THREE.SphereGeometry(.05, 8, 6), stoneM); ear.position.set(sd * .16, 1.1, .1); L.add(ear);
+    });
+    const tail = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new V3(0, .25, -.5), new V3(.12, .4, -.62), new V3(.05, .6, -.58)]), 12, .025, 6), stoneM); L.add(tail);
+    const tuft = new THREE.Mesh(new THREE.SphereGeometry(.07, 10, 8), maneM); tuft.position.set(.05, .63, -.56); L.add(tuft);
+    return L;
+  }
+  [[-1, true], [1, false]].forEach(([sx, male]) => {   // 面向廟外：左公右母
+    const P = new THREE.Group(); P.position.set(sx * 1.7, 1, -15.0); g.add(P);
+    const b1 = new THREE.Mesh(new THREE.BoxGeometry(1.0, .22, 1.0), M_PLINTH); b1.position.y = .11; P.add(b1);
+    const b2 = new THREE.Mesh(new THREE.BoxGeometry(.82, .42, .82), [fretM, fretM, M_PLINTH, M_PLINTH, fretM, fretM]); b2.position.y = .43; P.add(b2);
+    const b3 = new THREE.Mesh(new THREE.BoxGeometry(.94, .1, .94), M_PLINTH); b3.position.y = .69; P.add(b3);
+    const L = lion(male); L.scale.setScalar(1.25); L.position.y = .74; L.rotation.y = -sx * .3; P.add(L);
+  });
   scene.add(g);
 })();
 
@@ -471,6 +571,9 @@ function archShape(w, h) {
   const mid = canvasTex(512, 256, (x, w, h) => {
     const gr = x.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, '#13213f'); gr.addColorStop(1, '#0a1226');
     x.fillStyle = gr; x.fillRect(0, 0, w, h);
+    x.strokeStyle = 'rgba(140,180,255,.18)'; x.lineWidth = 2;   // 暗流
+    for (let k = 0; k < 14; k++) { const y0 = Math.random() * h; x.beginPath(); for (let i = 0; i <= w; i += 8) x.lineTo(i, y0 + Math.sin(i * .03 + k) * 10); x.stroke(); }
+    for (let k = 0; k < 120; k++) { x.fillStyle = `rgba(220,235,255,${.3 + Math.random() * .6})`; x.beginPath(); x.arc(Math.random() * w, Math.random() * h, .8 + Math.random() * 1.6, 0, 7); x.fill(); }
   });
   const top = canvasTex(1024, 512, (x, w, h) => {   // 上層：浪頭與引魂神祇
     waves(x, w, h, '#5aa7e0', '#ffffff');
@@ -481,17 +584,18 @@ function archShape(w, h) {
       x.strokeStyle = '#ffd98a'; x.lineWidth = 4; x.beginPath(); x.arc(cx, 150, 40, 0, Math.PI * 2); x.stroke();
     }
   });
-  const mk = (tex, rTop, rBot, h, y) => {
+  const mk = (tex, rTop, rBot, h, y, flow) => {
     const m = new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBot, h, 40, 1, true),
       new THREE.MeshStandardMaterial({ map: tex, emissive: 0xffffff, emissiveMap: tex, emissiveIntensity: .35, roughness: .7 }));
+    tex.wrapS = THREE.RepeatWrapping; animMural(m.material, flow);
     m.position.y = y; rotor.add(m); BZ.mats.push(m.material); return m;
   };
   const base = new THREE.Mesh(new THREE.CylinderGeometry(1.45, 1.6, .6, 8), M_PLINTH); base.position.y = .3; g.add(base);
   const ring = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.2, .35, 32), new THREE.MeshStandardMaterial({ color: 0x1f5a4a, roughness: .7 }));
   ring.position.y = .78; g.add(ring);
-  mk(low, 1.0, 1.0, 1.9, .95 + .95);
-  mk(mid, .97, 1.0, 1.9, 2.85 + .95);
-  mk(top, .9, .97, 1.65, 4.75 + .82);
+  mk(low, 1.0, 1.0, 1.9, .95 + .95, .8);
+  mk(mid, .97, 1.0, 1.9, 2.85 + .95, -.25);
+  mk(top, .9, .97, 1.65, 4.75 + .82, -.6);
   const lid = new THREE.Mesh(new THREE.CircleGeometry(.9, 32), new THREE.MeshStandardMaterial({ color: 0x2a3a5a })); lid.rotation.x = -Math.PI / 2; lid.position.y = 6.4; rotor.add(lid);
   // 彩布裙（紅黃相間、下緣波浪）
   const skirt = canvasTex(1024, 128, (x, w, h) => {
@@ -507,7 +611,7 @@ function archShape(w, h) {
   [[1.9, 1.12], [3.8, 1.1], [6.4, 1.04]].forEach(([y, r]) => {
     const sk = new THREE.Mesh(new THREE.CylinderGeometry(r, r + .12, .55, 40, 1, true),
       new THREE.MeshStandardMaterial({ map: skirt, transparent: true, alphaTest: .4, side: THREE.DoubleSide, emissive: 0xffffff, emissiveMap: skirt, emissiveIntensity: .3 }));
-    sk.position.y = y - .2; rotor.add(sk);
+    sk.position.y = y - .2; rotor.add(sk); animSkirt(sk.material);
     const led = new THREE.Mesh(new THREE.TorusGeometry(r + .02, .035, 6, 48), new THREE.MeshBasicMaterial({ color: 0xffc070 }));
     led.rotation.x = Math.PI / 2; led.position.y = y + .07; rotor.add(led); BZ.leds.push(led);
   });
@@ -519,7 +623,7 @@ function archShape(w, h) {
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(.035, .045, 8.6, 6), bamboo); pole.position.set(x, 4.9, z); g.add(pole);
     if (k % 2 === 0) {
       const fl = new THREE.Mesh(new THREE.PlaneGeometry(.9, .55), new THREE.MeshStandardMaterial({ color: flagCols[k / 2], side: THREE.DoubleSide, emissive: flagCols[k / 2], emissiveIntensity: .25 }));
-      fl.position.set(x + .45, 8.8, z); fl.userData.flag = true; g.add(fl);
+      fl.position.set(x + .45, 8.8, z); fl.userData.flag = true; g.add(fl); BZ.flags.push(fl);
     }
   }
   for (const y of [2.0, 3.9, 6.5]) { const tr = new THREE.Mesh(new THREE.TorusGeometry(1.3, .025, 6, 36), bamboo); tr.rotation.x = Math.PI / 2; tr.position.y = y; g.add(tr); }
@@ -2017,6 +2121,8 @@ const _bzc = new THREE.Color();
 let bzSpin = 0;
 function updateBig(dt, t) {
   if (!BZ.rotor) return;
+  BZ.u.value = t;
+  BZ.flags.forEach((f, i) => { f.rotation.y = Math.sin(t * 2.3 + i * 1.7) * .35; f.scale.x = 1 + Math.sin(t * 3.1 + i) * .08; });
   const target = bzSet.speed / 100 * 1.4 * bzSet.dir;     // 最快約每 4.5 秒一圈
   bzSpin += (target - bzSpin) * Math.min(1, dt * 2);      // 緩起緩停
   BZ.rotor.rotation.y += bzSpin * dt;
@@ -2060,6 +2166,47 @@ function closeBig() {
 $('#bzbtn').addEventListener('click', openBig);
 $('#bzDone').addEventListener('click', closeBig);
 
+/* ---------------- 特效鏡頭：自由視角（任意角度旋轉、縮放、平移、自動環繞） ---------------- */
+const orbit = new OrbitControls(camera, renderer.domElement);
+orbit.enabled = false; orbit.enableDamping = true; orbit.dampingFactor = .08;
+orbit.maxPolarAngle = Math.PI * .495; orbit.minDistance = 1.2; orbit.maxDistance = 80; orbit.autoRotateSpeed = .9;
+let freeCam = null;
+function camBtnVisible() { return activeScene === scene && !freeCam && (mode === 'overview' || mode === 'rite'); }
+function enterFree() {
+  if (!camBtnVisible()) return;
+  freeCam = { from: mode }; ptr = null;
+  $('#btns').style.display = 'none'; $('#cambtn').style.display = 'none'; setHint('');
+  $('#fcp').style.display = 'block';
+  orbit.target.copy(curLook); orbit.enabled = true; orbit.autoRotate = false; $('#fcAuto').classList.remove('on'); orbit.update();
+}
+function exitFree() {
+  if (!freeCam) return;
+  const from = freeCam.from; freeCam = null;
+  orbit.enabled = false; orbit.autoRotate = false; $('#fcp').style.display = 'none';
+  curLook.copy(orbit.target);
+  const p = overviewPose();
+  if (from === 'overview' && mode === 'overview') { mode = 'focusing'; tweenTo(p.pos, p.look, 1.8, () => { mode = 'overview'; setHint('點選一座䔲，開始牽引'); updateCount(); }); }
+  else tweenTo(p.pos, p.look, 1.8);
+}
+const SHOTS = {
+  all: () => { const p = overviewPose(); return [p.pos, p.look]; },
+  temple: () => [new V3(-6, 4, -4), new V3(0, 5, -19)],
+  big: () => [bigZhuangGroup.position.clone().add(new V3(3.5, 4.5, 7.5)), bigZhuangGroup.position.clone().add(new V3(0, 3.8, 0))],
+  sky: () => [new V3(0, 46, 6), new V3(0, 0, 0)],
+  low: () => [new V3(2.2, .7, 14), new V3(0, 2.2, -10)],
+};
+$('#cambtn').addEventListener('click', enterFree);
+$('#fcExit').addEventListener('click', exitFree);
+$('#fcAuto').addEventListener('click', () => { orbit.autoRotate = !orbit.autoRotate; $('#fcAuto').classList.toggle('on', orbit.autoRotate); });
+document.querySelectorAll('#fcp [data-s]').forEach(b => b.addEventListener('click', () => {
+  if (!freeCam) return;
+  const [pos, look] = SHOTS[b.dataset.s]();
+  orbit.enabled = false; curLook.copy(orbit.target);
+  tweenTo(pos, look, 1.6, () => { orbit.target.copy(look); orbit.enabled = true; orbit.update(); });
+}));
+let camBtnShown = false;
+function syncCamBtn() { const v = camBtnVisible(); if (v !== camBtnShown) { camBtnShown = v; $('#cambtn').style.display = v ? 'inline-block' : 'none'; } }
+
 /* ---------------- input ---------------- */
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 let ptr = null; // {id, x, y, t, lx, ly, lastA}
@@ -2069,7 +2216,7 @@ function screenCenter() {
 }
 const cvs = renderer.domElement;
 cvs.addEventListener('pointerdown', e => {
-  if (ptr) return;
+  if (ptr || freeCam) return;
   ptr = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), lx: e.clientX, ly: e.clientY, lastA: null };
   cvs.setPointerCapture(e.pointerId);
   if (mode === 'pull') { const c = screenCenter(); ptr.lastA = Math.atan2(e.clientY - c.y, e.clientX - c.x); }
@@ -2156,6 +2303,7 @@ applyUI(uiScale, false);
 let pinch = null;
 const tDist = ts => Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY);
 document.addEventListener('touchstart', e => {
+  if (freeCam) return;
   if (e.touches.length === 2) {
     pinch = { d0: tDist(e.touches), s0: uiScale };
     ptr = null; angVel = 0;           // 取消單指的拖曳／牽引／點選
@@ -2163,6 +2311,7 @@ document.addEventListener('touchstart', e => {
   }
 }, { passive: false, capture: true });
 document.addEventListener('touchmove', e => {
+  if (freeCam) return;
   if (pinch && e.touches.length === 2) {
     e.preventDefault();
     applyUI(pinch.s0 * tDist(e.touches) / Math.max(pinch.d0, 1), true);
@@ -2186,6 +2335,8 @@ function tick() {
   const dt = Math.min(clock.getDelta(), .05), t = clock.elapsedTime;
   waterMat.uniforms.t.value = t;
   updateTween(dt);
+  if (freeCam && !tw) orbit.update();
+  syncCamBtn();
 
   if (rite && mode !== 'ended') updateRite(dt);
   if (mode === 'alms' && alms) updateAlms(dt);

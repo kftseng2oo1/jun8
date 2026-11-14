@@ -1,10 +1,11 @@
 // 口湖牽水䔲 service worker：離線快取遊戲本體與 three.js
-const CACHE = 'jun8-v7';
+const CACHE = 'jun8-v8';
 const CORE = [
   './', './index.html', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png', './icons/favicon-32.png',
   'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js',
   'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/utils/BufferGeometryUtils.js',
+  'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js',
 ];
 
 self.addEventListener('install', e => {
