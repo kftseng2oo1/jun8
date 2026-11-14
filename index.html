@@ -80,6 +80,11 @@
     border:1px solid rgba(239,228,204,.3);border-radius:1.2em;padding:.3em .8em;margin-left:auto;margin-right:10px;display:none}
   #intro .ver{font-size:calc(11px*var(--ui));opacity:.4;margin-top:16px}
   #btns{display:none;justify-content:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+  #morebtn{pointer-events:auto;background:rgba(10,14,28,.7);color:#ffe7b0;border:1px solid rgba(227,177,74,.6);border-radius:1.5em;
+    padding:.6em 1.2em;font:inherit;font-size:calc(15px*var(--ui));letter-spacing:.12em}
+  #more{display:none;width:100%;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:2px}
+  #btns.open #more{display:flex}
+  #btns.open #morebtn{background:linear-gradient(#c2483d,#8e2b23);color:#fff3dc;border-color:#e3b14a}
   #dedibtn{pointer-events:auto;background:rgba(120,20,14,.75);color:#ffe7b0;border:1px solid #e3b14a;border-radius:1.5em;
     padding:.6em 1.3em;font:inherit;font-size:calc(15px*var(--ui));letter-spacing:.15em}
   #dedi{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);z-index:6;overflow-y:auto}
@@ -258,7 +263,7 @@
     <div class="ly" data-i="1"><span>中界・洗淨</span><i><b></b></i></div>
     <div class="ly" data-i="2"><span>上界・天堂</span><i><b></b></i></div>
   </div>
-  <div id="btns"><button id="pullbtn">牽䔲</button><button id="craftbtn">製作水䔲</button><button id="templebtn">入廟參拜</button><button id="bzbtn">大䔲燈控</button><button id="dedibtn">貼紅紙・敬獻</button><button id="rite">倒䔲・燒䔲</button></div>
+  <div id="btns"><button id="pullbtn">牽䔲</button><button id="morebtn">更多 ▾</button><div id="more"><button id="craftbtn">製作水䔲</button><button id="templebtn">入廟參拜</button><button id="bzbtn">大䔲燈控</button><button id="dedibtn">貼紅紙・敬獻</button><button id="rite">倒䔲・燒䔲</button></div></div>
   <div id="hinttext"></div>
 </div>
 <div id="ending"><div class="box">
@@ -386,6 +391,23 @@ water.position.set(0, 0.02, 52);
 scene.add(water);
 
 let bigZhuangGroup = null, templeGroup = null;
+// 把同材質的靜態網格合併成一個，減少 draw call（iPhone 效能）
+function mergeStatic(root) {
+  root.updateMatrixWorld(true);
+  const inv = root.matrixWorld.clone().invert(), buckets = new Map();
+  root.traverse(o => {
+    if (!o.isMesh || Array.isArray(o.material)) return;
+    const k = o.material.uuid + (o.geometry.index ? 'i' : 'n') + Object.keys(o.geometry.attributes).sort().join();
+    if (!buckets.has(k)) buckets.set(k, []); buckets.get(k).push(o);
+  });
+  buckets.forEach(list => {
+    if (list.length < 2) return;
+    const geos = list.map(o => { const g = o.geometry.clone(); g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld)); return g; });
+    const merged = mergeGeometries(geos); if (!merged) return;
+    list.forEach(o => o.removeFromParent());
+    root.add(new THREE.Mesh(merged, list[0].material));
+  });
+}
 const BZ = { leds: [], flags: [], u: { value: 0 } };
 function animMural(mat, flow) {   // 壁畫：浪紋流動、輕微起伏、光帶掃過、星點閃爍
   mat.onBeforeCompile = sh => {
@@ -622,6 +644,7 @@ function archShape(w, h) {
     const b3 = new THREE.Mesh(new THREE.BoxGeometry(.94, .1, .94), M_PLINTH); b3.position.y = .69; P.add(b3);
     const L = lion(male); L.scale.setScalar(1.25); L.position.y = .74; L.rotation.y = -sx * .3; P.add(L);
   });
+  mergeStatic(g);
   scene.add(g); templeGroup = g;
 })();
 
@@ -948,8 +971,9 @@ let camDist = portrait() ? 21 : 24;
 const OV_TARGET = new V3(0, 0, -2);
 camera.fov = portrait() ? 62 : 50; camera.updateProjectionMatrix();
 function overviewPose() {
-  const pos = new V3(Math.sin(camYaw) * camDist, camDist * .45, Math.cos(camYaw) * camDist).add(OV_TARGET);
-  return { pos, look: OV_TARGET.clone() };
+  const look = portrait() ? OV_TARGET.clone() : new V3(0, 2.4, -4.5);   // 橫向畫面：視線抬高，萬善祠屋頂不被切掉
+  const pos = new V3(Math.sin(camYaw) * camDist, camDist * (portrait() ? .45 : .4), Math.cos(camYaw) * camDist).add(OV_TARGET);
+  return { pos, look };
 }
 let tw = null;
 function tweenTo(pos, look, dur, cb) { tw = { fp: camera.position.clone(), fl: curLook.clone(), tp: pos, tl: look, t: 0, d: dur, cb }; }
@@ -971,7 +995,7 @@ const LAYER_NAMES = ['下界・水獄', '中界・洗淨', '上界・天堂'];
 
 function setHint(t) { $('#hinttext').innerHTML = t; }
 function updateCount() {
-  $('#count').textContent = `已牽引 ${done.size} / ${N} 座`;
+  $('#count').textContent = `已牽 ${done.size}/${N}`;
   $('#btns').style.display = mode === 'overview' && picked < 0 ? 'flex' : 'none';
   $('#rite').style.display = done.size > 0 ? 'block' : 'none';
 }
@@ -3149,6 +3173,9 @@ function updatePick(t) {
   pickRing.scale.setScalar(1 + Math.sin(t * 5) * .06);
   pickGlow.material.opacity = .4 + Math.sin(t * 5) * .15;
 }
+
+$('#morebtn').addEventListener('click', () => { $('#btns').classList.toggle('open'); $('#morebtn').textContent = $('#btns').classList.contains('open') ? '收起 ▴' : '更多 ▾'; });
+$('#more').addEventListener('click', e => { if (e.target.tagName === 'BUTTON') { $('#btns').classList.remove('open'); $('#morebtn').textContent = '更多 ▾'; } });
 
 /* ---------------- input ---------------- */
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
