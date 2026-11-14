@@ -18,22 +18,26 @@ async def speak(say, voice, rate, pitch, path):
     if FAKE:
         path.write_bytes(b"")
         return
-    for attempt in range(6):
+    for attempt in range(5):
         try:
             await edge_tts.Communicate(say, voice, rate=rate, pitch=pitch).save(str(path))
             if path.stat().st_size > 1000:
-                return
-        except Exception as e:  # 偶發的 websocket 中斷
+                await asyncio.sleep(1.2)   # 放慢，避免被限流
+                return True
+        except Exception as e:  # 偶發的 websocket 中斷／限流
             print("retry", path.name, e)
-        await asyncio.sleep(4 * (attempt + 1))
-    sys.exit(f"failed: {path}")
+        await asyncio.sleep(8 * (attempt + 1))
+    if path.exists():
+        path.unlink()
+    print("FAILED", path)   # 先略過，下次執行再補
+    return False
 
 
 async def main():
     force = "--force" in sys.argv
     rate, pitch = spec.get("rate", "+0%"), spec.get("pitch", "+0Hz")
     man = json.loads(MAN.read_text()) if MAN.exists() else {}
-    new = {}
+    new, missing = {}, 0
     for key, voice in spec["voices"].items():
         d = OUT / key
         d.mkdir(parents=True, exist_ok=True)
@@ -45,13 +49,17 @@ async def main():
             new[key][lid] = h
             if not force and mp3.exists() and man.get(key, {}).get(lid) == h:
                 continue
-            await speak(say, voice, rate, pitch, mp3)
-            print("ok", key, lid, say)
+            if await speak(say, voice, rate, pitch, mp3):
+                print("ok", key, lid, say)
+            else:
+                new[key].pop(lid)
+                missing += 1
         for f in d.glob("*.mp3"):
             if f.stem not in spec["lines"]:
                 f.unlink()
                 print("removed", key, f.name)
     MAN.write_text(json.dumps(new, ensure_ascii=False, indent=1), encoding="utf-8")
+    print("missing", missing)
 
 
 asyncio.run(main())

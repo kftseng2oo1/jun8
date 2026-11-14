@@ -56,6 +56,15 @@
   #skip{position:fixed;top:calc(44px + env(safe-area-inset-top));right:12px;display:none;pointer-events:auto;background:rgba(10,14,28,.5);color:#efe4cc;
     border:1px solid rgba(239,228,204,.3);border-radius:1.4em;padding:.4em 1.1em;font:inherit;font-size:calc(12px*var(--ui));z-index:4}
   #fade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity 1.6s;z-index:3}
+  .vsel{margin-top:16px;padding-top:14px;border-top:1px solid rgba(239,228,204,.2)}
+  .vsel .lab{font-size:calc(13px*var(--ui));opacity:.7;letter-spacing:.15em;margin-bottom:8px}
+  .vsel .opts{display:flex;justify-content:center;gap:6px;flex-wrap:wrap}
+  .vsel button{font:inherit;font-size:calc(14px*var(--ui));background:rgba(10,14,28,.5);color:#efe4cc;border:1px solid rgba(239,228,204,.3);
+    border-radius:1.2em;padding:.35em .9em;letter-spacing:.08em}
+  .vsel button.on{background:linear-gradient(#c2483d,#8e2b23);border-color:#e3b14a;color:#fff3dc}
+  .vsel label{display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:calc(13px*var(--ui));opacity:.8}
+  #vbtn{pointer-events:auto;font:inherit;font-size:calc(12px*var(--ui));background:rgba(10,14,28,.55);color:#efe4cc;
+    border:1px solid rgba(239,228,204,.3);border-radius:1.2em;padding:.3em .8em;margin-left:auto;margin-right:10px;display:none}
   #intro .ver{font-size:calc(11px*var(--ui));opacity:.4;margin-top:16px}
   #btns{display:none;justify-content:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
   #dedibtn{pointer-events:auto;background:rgba(120,20,14,.75);color:#ffe7b0;border:1px solid #e3b14a;border-radius:1.5em;
@@ -98,7 +107,7 @@
 </script>
 </head>
 <body>
-<div id="top" class="hud"><h1>口湖牽水䔲</h1><div id="count"></div></div>
+<div id="top" class="hud"><h1>口湖牽水䔲</h1><button id="vbtn"></button><div id="count"></div></div>
 <button id="back">← 返回</button>
 <div id="msg"></div>
 <div id="cap"></div>
@@ -141,6 +150,9 @@
   <div class="how">序章：道光年間的那一夜<br>第二幕：往上滑，放水燈、請水魂<br>第三幕：繞圈牽䔲，再倒䔲、燒䔲</div>
   <button id="start">從序章開始</button>
   <div class="chap"><button id="start2">第二幕・請水魂</button><button id="start3">第三幕・牽䔲</button></div>
+  <div class="vsel"><div class="lab">旁白聲音</div>
+    <div class="opts"><button data-v="hsiaochen">曉臻・女</button><button data-v="hsiaoyu">曉雨・女</button><button data-v="yunjhe">雲哲・男</button><button data-v="off">不要旁白</button></div>
+    <label><input type="checkbox" id="subs"> 同時顯示字幕</label></div>
   <div class="ver">原型 v0.4・序章／請水魂／牽䔲</div>
 </div></div>
 
@@ -626,6 +638,7 @@ const LAYER_COL = [[.35, .6, 1], [.7, .9, 1], [1, .82, .45]];
 /* ---------------- audio（靈角、誦經低吟、鐘、海風） ---------------- */
 let ac = null, master, drone = null;
 function initAudio() {
+  if (ac) return;
   try {
     ac = new (window.AudioContext || window.webkitAudioContext)();
     master = ac.createGain(); master.gain.value = .9; master.connect(ac.destination);
@@ -754,6 +767,7 @@ function updateLayerUI() {
 
 function leaveIntro() {
   initAudio(); if (ac && ac.state === 'suspended') ac.resume();
+  preloadVoice(); $('#vbtn').style.display = 'inline-block';
   $('#intro').style.opacity = 0; setTimeout(() => $('#intro').remove(), 1200);
 }
 let activeScene = scene;
@@ -765,6 +779,7 @@ function beginAct3() {
   const p = overviewPose();
   tweenTo(p.pos, p.look, 3.2, () => { mode = 'overview'; setHint('點選一座䔲，開始牽引'); updateCount(); });
   horn(); updateCount();
+  playCaps([['c0', 3], ['c1', 3]]);
 }
 $('#start').addEventListener('click', () => { leaveIntro(); startPrologue(); });
 $('#start2').addEventListener('click', () => { leaveIntro(); startAct2(); });
@@ -835,7 +850,7 @@ function completeLayer(L) {
     emit(s.pos.x + Math.cos(a) * .4, y * s.s, s.pos.z + Math.sin(a) * .4,
       Math.cos(a) * sp, .4 + Math.random() * 1.2, Math.sin(a) * sp, 1.6 + Math.random(), ...LAYER_COL[L]);
   }
-  showMsg(LAYER_NAMES[L].replace('・', ' ') + ' 圓滿', 1800);
+  showMsg(LAYER_NAMES[L].replace('・', ' ') + ' 圓滿', 1800); narrate(['c2', 'c3', 'c4'][L]);
   if (L === 2) finish();
 }
 function finish() {
@@ -848,7 +863,7 @@ function finish() {
       Math.cos(a) * .3, 2 + Math.random() * 3.5, Math.sin(a) * .3, 3 + Math.random() * 2.5, 1, .85, .5);
   }
   pillar.position.copy(s.pos); pillar.visible = true; pillar.userData.t = 0;
-  setTimeout(() => showMsg('水魂已牽引上岸', 3000), 900);
+  setTimeout(() => { showMsg('水魂已牽引上岸', 3000); narrate('c5'); }, 900);
   setTimeout(() => exitFocus(true), 4600);
 }
 
@@ -1181,29 +1196,104 @@ const P = { t: 0, beat: -1, beatT: 0, storm: .1, stormT: .1, tide: -.9, tideT: -
   lightsOut: false, flash: 0, done: false, yaw: 0,
   camPos: new V3(0, 9, 26), camLook: new V3(0, 1, -8), camPosT: new V3(0, 9, 26), camLookT: new V3(0, 1, -8) };
 const BEATS = [
-  { txt: '清道光二十五年，<br>農曆六月初七。', dur: 5.5 },
-  { txt: '口湖沿海的村庄，<br>世代靠海維生。', dur: 5.5, on() { P.camPosT.set(-7, 6, 15); P.camLookT.set(1, 1, -7); } },
-  { txt: '這天，天色驟暗，<br>狂風暴雨挾著海潮撲來。', dur: 6.5, on() { P.stormT = 1; P.skyT = 1; P.camPosT.set(0, 7, 19); P.camLookT.set(0, 1, -6); } },
-  { txt: '海水漫過堤岸，<br>倒灌進村子。', dur: 9, on() { P.tideT = 1.45; } },
-  { txt: '一夜之間，<br>數千條人命被大水帶走。', dur: 8, on() { P.lightsOut = true; } },
+  { id: 'p0', txt: '清道光二十五年，<br>農曆六月初七。', dur: 5.5 },
+  { id: 'p1', txt: '口湖沿海的村庄，<br>世代靠海維生。', dur: 5.5, on() { P.camPosT.set(-7, 6, 15); P.camLookT.set(1, 1, -7); } },
+  { id: 'p2', txt: '這天，天色驟暗，<br>狂風暴雨挾著海潮撲來。', dur: 6.5, on() { P.stormT = 1; P.skyT = 1; P.camPosT.set(0, 7, 19); P.camLookT.set(0, 1, -6); } },
+  { id: 'p3', txt: '海水漫過堤岸，<br>倒灌進村子。', dur: 9, on() { P.tideT = 1.45; } },
+  { id: 'p4', txt: '一夜之間，<br>數千條人命被大水帶走。', dur: 8, on() { P.lightsOut = true; } },
   { txt: '', dur: 2.6, on() { fade(1); }, end() { toDawn(); fade(0); } },
-  { txt: '水退之後，<br>倖存的人將罹難者合葬，', dur: 5.5 },
-  { txt: '立塚「萬善同歸」，<br>年年祭祀。', dur: 5.5, on() { P.camPosT.set(.9, 2.5, 19.2); P.camLookT.set(0, 2.15, 12.3); } },
-  { txt: '一百八十年來，<br>每到這兩天，<br>口湖人便為他們牽䔲。', dur: 6.5,
+  { id: 'p6', txt: '水退之後，<br>倖存的人將罹難者合葬，', dur: 5.5 },
+  { id: 'p7', txt: '立塚「萬善同歸」，<br>年年祭祀。', dur: 5.5, on() { P.camPosT.set(.9, 2.5, 19.2); P.camLookT.set(0, 2.15, 12.3); } },
+  { id: 'p8', txt: '一百八十年來，<br>每到這兩天，<br>口湖人便為他們牽䔲。', dur: 6.5,
     end() { P.done = true; $('#skip').style.display = 'none'; fade(1); setTimeout(() => { startAct2(); fade(0); }, 1700); } },
 ];
 function fade(v) { $('#fade').style.opacity = v; }
 function showCap(txt) {
   const c = $('#cap'); c.style.opacity = 0;
-  setTimeout(() => { c.innerHTML = txt; c.style.opacity = txt ? 1 : 0; }, 450);
+  clearTimeout(showCap._t);
+  showCap._t = setTimeout(() => { c.innerHTML = txt; c.style.opacity = txt ? 1 : 0; }, 450);
 }
+/* ---------------- 旁白：三種聲音（audio/<聲音>/<id>.mp3，由 tts/ 產生），失敗時改用裝置朗讀 ---------------- */
+const NARR = {"p0": {"cap": "清道光二十五年，<br>農曆六月初七。", "say": "清道光二十五年，農曆六月初七。"}, "p1": {"cap": "口湖沿海的村庄，<br>世代靠海維生。", "say": "口湖沿海的村莊，世代靠海維生。"}, "p2": {"cap": "這天，天色驟暗，<br>狂風暴雨挾著海潮撲來。", "say": "這天，天色驟暗，狂風暴雨挾著海潮撲來。"}, "p3": {"cap": "海水漫過堤岸，<br>倒灌進村子。", "say": "海水漫過堤岸，倒灌進村子。"}, "p4": {"cap": "一夜之間，<br>數千條人命被大水帶走。", "say": "一夜之間，數千條人命被大水帶走。"}, "p6": {"cap": "水退之後，<br>倖存的人將罹難者合葬，", "say": "水退之後，倖存的人將罹難者合葬，"}, "p7": {"cap": "立塚「萬善同歸」，<br>年年祭祀。", "say": "立塚，萬善同歸，年年祭祀。"}, "p8": {"cap": "一百八十年來，<br>每到這兩天，<br>口湖人便為他們牽䔲。", "say": "一百八十年來，每到這兩天，口湖人便為他們牽水狀。"}, "a0": {"cap": "農曆六月初七，入夜。", "say": "農曆六月初七，入夜。"}, "a1": {"cap": "鄉人來到水邊，<br>點起一盞盞水燈，", "say": "鄉人來到水邊，點起一盞盞水燈，"}, "a2": {"cap": "為水中的亡魂照亮回岸的路。", "say": "為水中的亡魂照亮回岸的路。"}, "a5": {"cap": "手指往上滑，<br>把水燈推向水面。", "say": "手指往上滑，把水燈推向水面。"}, "a3": {"cap": "水魂隨著燈光，<br>一一來到岸邊。", "say": "水魂隨著燈光，一一來到岸邊。"}, "a4": {"cap": "明日，<br>鄉人將為他們牽䔲。", "say": "明日，鄉人將為他們牽水狀。"}, "c0": {"cap": "六月初八，萬善祠前，<br>䔲陣林立。", "say": "六月初八，萬善祠前，水狀林立。"}, "c1": {"cap": "點選一座䔲，用手指繞圈，<br>牽引亡魂上岸。", "say": "點選一座水狀，用手指繞圈，牽引亡魂上岸。"}, "c2": {"cap": "下界水獄，圓滿。", "say": "下界水獄，圓滿。"}, "c3": {"cap": "中界洗淨，圓滿。", "say": "中界洗淨，圓滿。"}, "c4": {"cap": "上界天堂，圓滿。", "say": "上界天堂，圓滿。"}, "c5": {"cap": "水魂已牽引上岸。", "say": "水魂已牽引上岸。"}, "c6": {"cap": "三位道士出廟化緣，<br>化緣圓滿之後，便要倒䔲。", "say": "三位道士出廟化緣，化緣圓滿之後，便要倒狀。"}, "c7": {"cap": "化緣圓滿。", "say": "化緣圓滿。"}, "c8": {"cap": "倒䔲。", "say": "倒狀。"}, "c9": {"cap": "燒䔲。", "say": "燒狀。"}, "e0": {"cap": "功德圓滿。䔲已倒、紙已化，水中先人隨火光上岸。<br>一百八十年來，口湖人年年如此，<br>願逝者安息，生者平安。", "say": "功德圓滿。水狀已倒，紙已化，水中先人，隨火光上岸。一百八十年來，口湖人年年如此。願逝者安息，生者平安。"}};
+const VOICE_NAMES = { hsiaochen: '曉臻', hsiaoyu: '曉雨', yunjhe: '雲哲', off: '旁白關' };
+let voiceKey = 'hsiaochen', subsOn = false;
+try { voiceKey = localStorage.getItem('qsz-voice') || 'hsiaochen'; subsOn = localStorage.getItem('qsz-subs') === '1'; } catch (e) {}
+const narrCache = new Map();
+let narrSrc = null, narrGen = 0;
+async function loadLine(id, key = voiceKey) {
+  const k = key + '/' + id;
+  if (narrCache.has(k)) return narrCache.get(k);
+  const pr = (async () => {
+    const r = await fetch(`audio/${key}/${id}.mp3`);
+    if (!r.ok) throw new Error('no audio');
+    const ab = await r.arrayBuffer();
+    return await new Promise((ok, bad) => ac.decodeAudioData(ab, ok, bad));
+  })();
+  narrCache.set(k, pr); pr.catch(() => narrCache.delete(k));
+  return pr;
+}
+function preloadVoice() { if (!ac || voiceKey === 'off') return; Object.keys(NARR).forEach(id => loadLine(id).catch(() => {})); }
+function stopNarr() {
+  narrGen++;
+  try { narrSrc && narrSrc.stop(); } catch (e) {}
+  narrSrc = null;
+  try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {}
+}
+function zhVoice() {
+  const vs = (window.speechSynthesis && speechSynthesis.getVoices()) || [];
+  return vs.find(v => /zh[-_]TW/i.test(v.lang)) || vs.find(v => /zh/i.test(v.lang)) || null;
+}
+// 念一句，回傳秒數（0 表示沒有念）
+async function narrate(id) {
+  if (voiceKey === 'off' || !ac || !NARR[id]) return 0;
+  stopNarr(); const my = narrGen;
+  try {
+    const buf = await loadLine(id);
+    if (my !== narrGen) return 0;
+    const src = ac.createBufferSource(); src.buffer = buf;
+    const g = ac.createGain(); g.gain.value = 1.5; src.connect(g).connect(master); src.start();
+    narrSrc = src; return buf.duration;
+  } catch (e) {
+    if (my !== narrGen || !window.speechSynthesis) return 0;
+    const v = zhVoice(); if (!v) return 0;
+    const u = new SpeechSynthesisUtterance(NARR[id].say); u.voice = v; u.lang = v.lang; u.rate = .92;
+    speechSynthesis.speak(u);
+    return NARR[id].say.length * .27 + .5;
+  }
+}
+// 旁白＋（依設定）字幕
+function sayLine(id, cap = true) {
+  if (cap) showCap((voiceKey === 'off' || subsOn) && NARR[id] ? NARR[id].cap : '');
+  return narrate(id);
+}
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+function refreshVoiceUI() {
+  document.querySelectorAll('.vsel button').forEach(b => b.classList.toggle('on', b.dataset.v === voiceKey));
+  const sb = $('#subs'); if (sb) { sb.checked = subsOn || voiceKey === 'off'; sb.disabled = voiceKey === 'off'; }
+  $('#vbtn').textContent = '🔊 ' + VOICE_NAMES[voiceKey];
+}
+function setVoice(k, sample) {
+  voiceKey = k; try { localStorage.setItem('qsz-voice', k); } catch (e) {}
+  refreshVoiceUI();
+  if (k !== 'off') { initAudio(); if (ac && ac.state === 'suspended') ac.resume(); preloadVoice(); if (sample) narrate('p0'); }
+  else stopNarr();
+}
+document.querySelectorAll('.vsel button').forEach(b => b.addEventListener('click', () => setVoice(b.dataset.v, true)));
+$('#subs').addEventListener('change', e => { subsOn = e.target.checked; try { localStorage.setItem('qsz-subs', subsOn ? '1' : '0'); } catch (err) {} });
+$('#vbtn').addEventListener('click', () => {
+  const order = ['hsiaochen', 'hsiaoyu', 'yunjhe', 'off'];
+  setVoice(order[(order.indexOf(voiceKey) + 1) % order.length], false);
+});
+refreshVoiceUI();
 function nextBeat() {
   if (P.done) return;
   const cur = BEATS[P.beat]; if (cur && cur.end) cur.end();
   if (P.done) return;
   P.beat++; P.beatT = 0;
   const b = BEATS[P.beat]; if (!b) return;
-  showCap(b.txt); b.on && b.on();
+  P.narrDur = 0;
+  if (b.id) sayLine(b.id).then(d => { if (BEATS[P.beat] === b) P.narrDur = d; }); else showCap('');
+  b.on && b.on();
 }
 function toDawn() {
   P.dawn = 1; P.storm = P.stormT = .05; P.tide = P.tideT = -1; P.sky = P.skyT = 0; P.lightsOut = false;
@@ -1226,7 +1316,7 @@ function startPrologue() {
 function updatePrologue(dt) {
   P.t += dt; P.beatT += dt;
   const b = BEATS[P.beat];
-  if (b && P.beatT > b.dur) nextBeat();
+  if (b && P.beatT > Math.max(b.dur, P.narrDur + .9)) nextBeat();
   P.storm += (P.stormT - P.storm) * Math.min(1, dt * .5);
   P.sky += (P.skyT - P.sky) * Math.min(1, dt * .5);
   P.tide += Math.sign(P.tideT - P.tide) * Math.min(Math.abs(P.tideT - P.tide), dt * .3);
@@ -1402,12 +1492,17 @@ function chime() {
 }
 
 // 字幕序列
-let capTimers = [];
-function capsCancel() { capTimers.forEach(clearTimeout); capTimers = []; }
-function playCaps(list, done) {
-  let at = 0;
-  list.forEach(([txt, dur]) => { capTimers.push(setTimeout(() => showCap(txt), at * 1000)); at += dur; });
-  capTimers.push(setTimeout(() => { showCap(''); done && done(); }, at * 1000));
+let capTimers = [], capGen = 0;
+function capsCancel() { capGen++; capTimers.forEach(clearTimeout); capTimers = []; stopNarr(); showCap(''); }
+async function playCaps(list, done) {   // list: [[旁白 id, 最短秒數], …]
+  const my = ++capGen;
+  for (const [id, dur] of list) {
+    if (my !== capGen) return;
+    const d = await sayLine(id);
+    await sleep(Math.max(dur, d + .8) * 1000);
+  }
+  if (my !== capGen) return;
+  showCap(''); done && done();
 }
 
 const A2 = { t: 0, total: 7, released: 0, cur: null, lanterns: [], phase: 'intro', done: false, spawnAt: 0 };
@@ -1418,9 +1513,9 @@ function startAct2() {
   camera.position.set(0, 3.3, 6.6); curLook.set(0, .1, -5); camera.lookAt(curLook);
   $('#skip').textContent = '跳過 ›'; $('#skip').style.display = 'block';
   droneStart(); a2Count(); horn();
-  playCaps([['農曆六月初七，入夜。', 4], ['鄉人來到水邊，<br>點起一盞盞水燈，', 4.5], ['為水中的亡魂照亮回岸的路。', 4.5]], () => {
+  playCaps([['a0', 3.5], ['a1', 4], ['a2', 4]], () => {
     if (A2.done) return;
-    A2.phase = 'play'; A2.spawnAt = A2.t; setHint('手指往上滑，把水燈推向水面');
+    A2.phase = 'play'; A2.spawnAt = A2.t; setHint('手指往上滑，把水燈推向水面'); narrate('a5');
   });
 }
 function act2Swipe(dx, dy, dt) {
@@ -1436,7 +1531,7 @@ function act2Swipe(dx, dy, dt) {
     A2.phase = 'outro';
     capTimers.push(setTimeout(() => {
       if (A2.done) return;
-      playCaps([['水魂隨著燈光，<br>一一來到岸邊。', 4.5], ['明日，<br>鄉人將為他們牽䔲。', 4.5]], () => {
+      playCaps([['a3', 4], ['a4', 4]], () => {
         if (A2.done) return; A2.done = true; $('#skip').style.display = 'none';
         fade(1); setTimeout(() => { beginAct3(); fade(0); }, 1700);
       });
@@ -1571,6 +1666,20 @@ function almsAt(t) {
   const last = almsTL.segs[almsTL.segs.length - 1];
   return { p: last.b.clone(), dir: new V3(0, 0, -1), stop: false, idx: almsTL.segs.length, done: true };
 }
+function ringBell(mul = 1, amp = .16) {   // 道士手中的帝鐘（三清鈴）
+  if (!ac) return;
+  const t = ac.currentTime, f = 1180 * mul * (1 + (Math.random() - .5) * .01);
+  [[1, amp, 1.3], [2.41, amp * .5, .8], [3.93, amp * .3, .45], [5.8, amp * .15, .25]].forEach(([m, a, d]) => {
+    const o = ac.createOscillator(), g = ac.createGain(); o.type = 'sine'; o.frequency.value = f * m;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(a, t + .004); g.gain.exponentialRampToValueAtTime(.0001, t + d);
+    o.connect(g).connect(master); o.start(t); o.stop(t + d + .05);
+  });
+  // 鈴舌敲擊聲
+  const n = ac.createBufferSource(), len = ac.sampleRate * .03, b = ac.createBuffer(1, len, ac.sampleRate), dd = b.getChannelData(0);
+  for (let i = 0; i < len; i++) dd[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 3000;
+  const ng = ac.createGain(); ng.gain.value = amp * .6; n.buffer = b; n.connect(hp).connect(ng).connect(master); n.start(t);
+}
 function handbell() {
   if (!ac) return;
   const t0 = ac.currentTime;
@@ -1590,7 +1699,7 @@ function startRite() {
   mode = 'alms'; setHint(''); $('#btns').style.display = 'none';
   alms = { t: -1.2, lastStop: -1, camPos: camera.position.clone(), camLook: curLook.clone() };
   priests.forEach(p => { p.visible = true; p.position.set(0, 1, -17.2); });
-  showMsg('道士出廟化緣', 2400); horn(); droneStart();
+  showMsg('道士出廟化緣', 2400); horn(); droneStart(); setTimeout(() => { if (mode === 'alms') narrate('c6'); }, 1200);
   $('#skip').textContent = '略過化緣 ›'; $('#skip').style.display = 'block';
   setTimeout(() => { if (mode === 'alms') setHint('三位道士出廟化緣，化緣圓滿後倒䔲'); }, 2600);
 }
@@ -1608,14 +1717,23 @@ function updateAlms(dt) {
     pr.userData.body.rotation.z = walking ? Math.sin(ph) * .04 : 0;
     const face = st.stop ? 0 : Math.atan2(st.dir.x, st.dir.z);
     pr.rotation.y += (face - pr.rotation.y) * Math.min(1, dt * 6);
-    pr.userData.bell.rotation.z = st.stop ? Math.sin(A.t * 22) * .5 : 0;
+    pr.userData.bell.rotation.z = st.stop ? Math.sin(A.t * 22 + k) * .5 : Math.sin(A.t * 6 + k) * .25;
+    // 搖鈴：停下化緣時密集搖響，走路時一步一響
+    if (pr.visible) {
+      pr.userData.bt = (pr.userData.bt ?? k * .2) - dt;
+      if (pr.userData.bt <= 0) {
+        const mul = [1, 1.07, .94][k];
+        if (st.stop) { ringBell(mul, .13 + Math.random() * .07); pr.userData.bt = .1 + Math.random() * .08; }
+        else { ringBell(mul, .07); pr.userData.bt = .5 + Math.random() * .12; }
+      }
+    }
     if (k === 0) lead = st;
     if (st.stop && Math.random() < dt * 5) {   // 化緣：信眾布施的金光
       emit(pr.position.x + (Math.random() - .5) * 1.6, .4 + Math.random() * .8, pr.position.z + (Math.random() - .5) * 1.6,
         (Math.random() - .5) * .3, .6 + Math.random() * .6, (Math.random() - .5) * .3, 1.4 + Math.random(), 1, .82, .35);
     }
   });
-  if (lead && lead.stop && lead.idx !== A.lastStop) { A.lastStop = lead.idx; handbell(); }
+  if (lead && lead.stop && lead.idx !== A.lastStop) { A.lastStop = lead.idx; }
   // 鏡頭跟著帶頭的道士
   if (lead) {
     const lp = lead.done ? new V3(0, 1, -17.4) : lead.p;
@@ -1630,7 +1748,7 @@ function endAlms() {
   if (!alms) return;
   alms = null; priests.forEach(p => p.visible = false);
   $('#skip').style.display = 'none'; setHint('');
-  showMsg('化緣圓滿', 2000); bell(659);
+  showMsg('化緣圓滿', 2000); bell(659); narrate('c7');
   mode = 'alms-end';
   setTimeout(beginTopple, 1500);
 }
@@ -1652,11 +1770,11 @@ function beginTopple() {
   flames.visible = false;
   camYaw = 0; camDist = portrait() ? 26 : 28;
   const p = overviewPose(); tweenTo(p.pos, p.look, 2.5);
-  showMsg('倒 䔲', 2200); horn(); droneStart();
+  showMsg('倒 䔲', 2200); horn(); droneStart(); narrate('c8');
 }
 function updateRite(dt) {
   const R = rite; R.t += dt; const T = R.t;
-  if (R.phase === 0 && T > R.firstBurn) { R.phase = 1; showMsg('燒 䔲', 2200); fireSndStart(); bell(392); }
+  if (R.phase === 0 && T > R.firstBurn) { R.phase = 1; showMsg('燒 䔲', 2200); narrate('c9'); fireSndStart(); bell(392); }
   const burning = [];
   for (let i = 0; i < N; i++) {
     const o = R.st[i];
@@ -1714,6 +1832,7 @@ function updateRite(dt) {
   if (R.phase === 1 && T > R.end - 2.5 && !burning.length) {
     R.phase = 2; fireSndStop(); droneStop(); horn();
     const e = $('#ending'); e.style.display = 'flex'; requestAnimationFrame(() => e.style.opacity = 1);
+    setTimeout(() => narrate('e0'), 1500);
   }
   if (T > R.end) mode = 'ended';
 }
@@ -1897,7 +2016,7 @@ function endPtr(e) {
   const moved = Math.hypot(e.clientX - ptr.x, e.clientY - ptr.y), dt = performance.now() - ptr.t;
   if (mode === 'act2') { act2Swipe(e.clientX - ptr.x, e.clientY - ptr.y, dt); ptr = null; return; }
   ptr = null;
-  if (mode === 'prologue' && moved < 10 && dt < 450) { if (P.beatT > 1.5 && BEATS[P.beat] && BEATS[P.beat].txt) nextBeat(); return; }
+  if (mode === 'prologue' && moved < 10 && dt < 450) { if (P.beatT > 1.5 && BEATS[P.beat] && BEATS[P.beat].id) nextBeat(); return; }
   if ((mode === 'overview' || mode === 'placing') && moved < 10 && dt < 450) {
     ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
     ray.setFromCamera(ndc, camera);
