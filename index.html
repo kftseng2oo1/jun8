@@ -57,7 +57,29 @@
     border:1px solid rgba(239,228,204,.3);border-radius:1.4em;padding:.4em 1.1em;font:inherit;font-size:calc(12px*var(--ui));z-index:4}
   #fade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity 1.6s;z-index:3}
   #intro .ver{font-size:calc(11px*var(--ui));opacity:.4;margin-top:16px}
-  #rite{display:none;pointer-events:auto;margin:0 auto 12px;background:linear-gradient(#e0913a,#a8521e);color:#fff3dc;
+  #btns{display:none;justify-content:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+  #dedibtn{pointer-events:auto;background:rgba(120,20,14,.75);color:#ffe7b0;border:1px solid #e3b14a;border-radius:1.5em;
+    padding:.6em 1.3em;font:inherit;font-size:calc(15px*var(--ui));letter-spacing:.15em}
+  #dedi{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.6);z-index:6;overflow-y:auto}
+  #dedi .panel{margin:auto;width:min(94vw,calc(380px*var(--ui)));background:#121a30;border:1px solid rgba(227,177,74,.45);
+    border-radius:16px;padding:18px 16px;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+  #dedi h3{margin:0 0 4px;font-size:calc(19px*var(--ui));letter-spacing:.3em;text-align:center;color:#ffe0a0}
+  #dedi .note{font-size:calc(13px*var(--ui));opacity:.65;text-align:center;margin-bottom:12px;line-height:1.6}
+  #dedi .row{display:flex;gap:6px;align-items:center;justify-content:center;flex-wrap:wrap}
+  #dedi select,#dedi input{font:inherit;font-size:max(16px,calc(16px*var(--ui)));background:#0a1020;color:#efe4cc;
+    border:1px solid rgba(239,228,204,.35);border-radius:10px;padding:.35em .5em}
+  #dedi input{width:7.5em}
+  #dprevWrap{display:flex;justify-content:center;margin:14px 0}
+  #dprev{position:static;touch-action:auto;height:calc(190px*var(--ui));width:auto;border-radius:3px;box-shadow:0 0 18px rgba(255,90,40,.35)}
+  #dedi .acts{display:flex;gap:10px;justify-content:center}
+  #dedi .acts button{font:inherit;font-size:calc(15px*var(--ui));border-radius:1.4em;padding:.5em 1.3em;letter-spacing:.12em}
+  #dok{background:linear-gradient(#c2483d,#8e2b23);color:#fff3dc;border:0}
+  #dcancel{background:none;color:#efe4cc;border:1px solid rgba(239,228,204,.35)}
+  #dlist{margin-top:14px;border-top:1px solid rgba(239,228,204,.15);padding-top:10px}
+  #dlist .it{display:flex;align-items:center;gap:8px;font-size:calc(14px*var(--ui));padding:5px 0}
+  #dlist .it span{flex:1;letter-spacing:.08em}
+  #dlist .it button{font:inherit;font-size:calc(13px*var(--ui));background:none;color:#ffd98a;border:1px solid rgba(255,217,138,.4);border-radius:1em;padding:.2em .8em}
+  #rite{display:none;pointer-events:auto;margin:0;background:linear-gradient(#e0913a,#a8521e);color:#fff3dc;
     border:0;border-radius:1.5em;padding:.6em 1.5em;font:inherit;font-size:calc(15px*var(--ui));letter-spacing:.2em;box-shadow:0 0 20px rgba(255,150,60,.5)}
   #ending{position:fixed;inset:0;display:none;align-items:center;justify-content:center;opacity:0;transition:opacity 2.5s;z-index:5;overflow-y:auto;
     background:radial-gradient(ellipse at 50% 55%,rgba(40,30,40,.25),rgba(8,10,20,.7))}
@@ -82,6 +104,18 @@
 <div id="cap"></div>
 <button id="skip">跳過序章 ›</button>
 <div id="fade"></div>
+<div id="dedi"><div class="panel">
+  <h3>敬獻紅紙</h3>
+  <div class="note">寫上敬獻者的名字，貼在一座䔲上</div>
+  <div class="row">
+    <select id="dtitle"><option>弟子</option><option>信士</option><option>信女</option><option>合家</option><option value="">（不加）</option></select>
+    <input id="dname" maxlength="8" placeholder="姓名" autocomplete="off">
+    <select id="dsuffix"><option>叩謝</option><option>敬獻</option><option>叩拜</option><option>敬奉</option></select>
+  </div>
+  <div id="dprevWrap"><canvas id="dprev" width="204" height="504"></canvas></div>
+  <div class="acts"><button id="dcancel">取消</button><button id="dok">選一座䔲貼上</button></div>
+  <div id="dlist"></div>
+</div></div>
 <div id="zoomtip"></div>
 <div id="hint" class="hud">
   <div id="layers">
@@ -89,7 +123,7 @@
     <div class="ly" data-i="1"><span>中界・洗淨</span><i><b></b></i></div>
     <div class="ly" data-i="2"><span>上界・天堂</span><i><b></b></i></div>
   </div>
-  <button id="rite">倒䔲・燒䔲</button>
+  <div id="btns"><button id="dedibtn">貼紅紙・敬獻</button><button id="rite">倒䔲・燒䔲</button></div>
   <div id="hinttext"></div>
 </div>
 <div id="ending"><div class="box">
@@ -492,7 +526,8 @@ const LAYER_NAMES = ['下界・水獄', '中界・洗淨', '上界・天堂'];
 function setHint(t) { $('#hinttext').innerHTML = t; }
 function updateCount() {
   $('#count').textContent = `已牽引 ${done.size} / ${N} 座`;
-  $('#rite').style.display = (mode === 'overview' && done.size > 0) ? 'block' : 'none';
+  $('#btns').style.display = mode === 'overview' ? 'flex' : 'none';
+  $('#rite').style.display = done.size > 0 ? 'block' : 'none';
 }
 function showMsg(t, ms = 2600) {
   const m = $('#msg'); m.textContent = t; m.style.opacity = 1;
@@ -552,7 +587,9 @@ function enterFocus(i) {
     mode = 'pull'; setHint('手指繞著䔲畫圈，牽引亡魂上岸');
     $('#layers').style.display = 'flex'; $('#back').style.display = 'block'; updateLayerUI();
   });
-  setHint(''); droneStart(); horn(); $('#rite').style.display = 'none';
+  setHint(''); droneStart(); horn(); $('#btns').style.display = 'none';
+  if (labels[i]) { focus.add(labels[i].mesh); labels[i].mesh.visible = true; }
+  cleared.forEach(j => labelVis(j, false));
 }
 function exitFocus(completed) {
   const i = sel;
@@ -563,7 +600,8 @@ function exitFocus(completed) {
     rebuildFlames(); updateCount();
   }
   field.setMatrixAt(i, slotMatrix(i));
-  for (const j of cleared) field.setMatrixAt(j, slotMatrix(j));
+  if (labels[i]) labels[i].holder.add(labels[i].mesh);
+  for (const j of cleared) { field.setMatrixAt(j, slotMatrix(j)); labelVis(j, true); }
   cleared = []; field.instanceMatrix.needsUpdate = true;
   focus.visible = false; sel = -1;
   $('#layers').style.display = 'none'; $('#back').style.display = 'none';
@@ -572,7 +610,10 @@ function exitFocus(completed) {
   const p = overviewPose();
   tweenTo(p.pos, p.look, 2.0, () => { mode = 'overview'; setHint(done.size ? '繼續牽引，或按「倒䔲・燒䔲」圓滿法事' : '點選一座䔲，開始牽引'); updateCount(); });
 }
-$('#back').addEventListener('click', () => { if (mode === 'pull') exitFocus(false); });
+$('#back').addEventListener('click', () => {
+  if (mode === 'pull') exitFocus(false);
+  else if (mode === 'placing') { pendingText = ''; mode = 'overview'; $('#back').style.display = 'none'; setHint('點選一座䔲，開始牽引'); updateCount(); }
+});
 
 function completeLayer(L) {
   layerDone = L + 1;
@@ -1081,7 +1122,7 @@ function fallenMatrix(i, ang, k) {
 }
 function startRite() {
   if (mode !== 'overview') return;
-  mode = 'rite'; setHint(''); $('#rite').style.display = 'none';
+  mode = 'rite'; setHint(''); $('#btns').style.display = 'none';
   const st = [], origin = new V3(0, 0, -14);
   let end = 0;
   for (let i = 0; i < N; i++) {
@@ -1109,7 +1150,16 @@ function updateRite(dt) {
     const ang = (f * f) * Math.PI / 2 * .93;                       // 加速倒下
     const b = THREE.MathUtils.clamp((T - o.tBurn) / (o.tAsh - o.tBurn), 0, 1);
     const a = THREE.MathUtils.clamp((T - o.tAsh) / 1.6, 0, 1);
-    field.setMatrixAt(i, f > 0 ? fallenMatrix(i, ang, Math.max(.02, 1 - a)) : slotMatrix(i));
+    const M = f > 0 ? fallenMatrix(i, ang, Math.max(.02, 1 - a)) : slotMatrix(i);
+    field.setMatrixAt(i, M);
+    const lb = labels[i];
+    if (lb) {
+      lb.holder.matrix.copy(M);
+      const c = lb.mesh.material.color;
+      if (b <= 0) c.setRGB(.9, .9, .9);
+      else if (b < .2) c.setRGB(.9, .9, .9).lerp(HOT, b / .2);
+      else c.copy(HOT).lerp(CHAR, Math.min(1, (b - .2) / .4));
+    }
     if (b > 0) {
       if (b < 1) burning.push(i);
       if (b < .15) _c.copy(slots[i].color).lerp(HOT, b / .15);
@@ -1156,6 +1206,7 @@ function updateRite(dt) {
 function resetAll() {
   done.clear(); try { localStorage.setItem('qsz-done', '[]'); } catch (e) {}
   for (let i = 0; i < N; i++) { field.setMatrixAt(i, slotMatrix(i)); field.setColorAt(i, slots[i].color); }
+  labels.forEach((lb, i) => { if (lb) { lb.holder.matrix.copy(slotMatrix(i)); lb.mesh.material.color.setRGB(.9, .9, .9); } });
   field.instanceMatrix.needsUpdate = true; field.instanceColor.needsUpdate = true;
   rite = null; flames.visible = true; rebuildFlames();
   scene.background.copy(NIGHT); scene.fog.color.copy(NIGHT); waterMat.uniforms.fogC.value.copy(NIGHT);
@@ -1168,6 +1219,126 @@ function resetAll() {
 }
 $('#rite').addEventListener('click', startRite);
 $('#again').addEventListener('click', resetAll);
+
+/* ---------------- 敬獻紅紙：姓名貼在䔲上、特寫鏡頭 ---------------- */
+const labels = [];           // labels[i] = { holder, mesh, text }
+let dedis = [];
+try { dedis = JSON.parse(localStorage.getItem('qsz-ded') || '[]'); } catch (e) {}
+const saveDedis = () => { try { localStorage.setItem('qsz-ded', JSON.stringify(dedis)); } catch (e) {} };
+const LABEL_GEO = new THREE.PlaneGeometry(.26, .64);
+
+async function fontReady(text) {
+  try { await Promise.race([document.fonts.load('700 64px "Noto Serif TC"', text), new Promise(r => setTimeout(r, 1500))]); } catch (e) {}
+}
+function drawLabel(cv, text) {
+  const W = 204, H = 504, x = cv.getContext('2d');
+  cv.width = W; cv.height = H;
+  const g = x.createLinearGradient(0, 0, W, 0);
+  g.addColorStop(0, '#a8170f'); g.addColorStop(.5, '#d8291c'); g.addColorStop(1, '#a8170f');
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
+  x.globalAlpha = .08; x.fillStyle = '#000';
+  for (let i = 0; i < 260; i++) x.fillRect(Math.random() * W, Math.random() * H, 2, 6 + Math.random() * 14);
+  x.globalAlpha = 1;
+  x.strokeStyle = '#f1c35a'; x.lineWidth = 5; x.strokeRect(9, 9, W - 18, H - 18);
+  x.lineWidth = 1.5; x.strokeRect(17, 17, W - 34, H - 34);
+  const chars = [...text], n = Math.max(chars.length, 1);
+  const step = (H - 64) / n, fs = Math.min(118, step * .9);
+  x.fillStyle = '#160704'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.font = `700 ${fs}px "Noto Serif TC","Songti TC","PMingLiU",serif`;
+  chars.forEach((ch, k) => x.fillText(ch, W / 2, 32 + step * (k + .5)));
+}
+function labelVis(i, v) { if (labels[i]) labels[i].holder.visible = v; }
+async function attachLabel(i, text) {
+  await fontReady(text);
+  if (labels[i]) { labels[i].holder.removeFromParent(); labels[i].mesh.removeFromParent(); labels[i].mesh.material.map.dispose(); labels[i].mesh.material.dispose(); }
+  const cv = document.createElement('canvas'); drawLabel(cv, text);
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+  const mesh = new THREE.Mesh(LABEL_GEO, new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(.9, .9, .9) }));
+  // 在䔲自身座標系裡貼在底層正面（世界座標朝 +z，面向進場鏡頭）
+  const th = -slots[i].ry, r = .438;
+  mesh.position.set(Math.sin(th) * r, .37, Math.cos(th) * r); mesh.rotation.y = th;
+  const holder = new THREE.Group(); holder.matrixAutoUpdate = false; holder.matrix.copy(slotMatrix(i));
+  holder.add(mesh); scene.add(holder);
+  labels[i] = { holder, mesh, text };
+}
+dedis.forEach(d => attachLabel(d.i, d.text));
+
+// 特寫鏡頭
+let closeCleared = [];
+function closeup(i, then) {
+  const s = slots[i], lb = labels[i]; if (!lb) return;
+  mode = 'closeup'; setHint(''); $('#btns').style.display = 'none';
+  const dir = new V3(0, 0, 1);
+  closeCleared = [];
+  for (let j = 0; j < N; j++) {
+    if (j === i) continue;
+    const v = slots[j].pos.clone().sub(s.pos), along = v.dot(dir), lateral = Math.abs(v.x);
+    if (along > 0 && along < 3 && lateral < .95) { closeCleared.push(j); field.setMatrixAt(j, ZERO); labelVis(j, false); }
+  }
+  field.instanceMatrix.needsUpdate = true;
+  const look = s.pos.clone().add(new V3(0, .37 * s.s, .44 * s.s));
+  const near = look.clone().add(new V3(0, .08, .95));
+  const mid = look.clone().add(new V3(.5, .9, 2.4));
+  tweenTo(mid, look, 1.8, () => {
+    showCap(lb.text); bell(523);
+    tweenTo(near, look, 3.6, () => {
+      setTimeout(() => {
+        showCap('');
+        const restore = () => {
+          closeCleared.forEach(j => { field.setMatrixAt(j, slotMatrix(j)); labelVis(j, true); });
+          closeCleared = []; field.instanceMatrix.needsUpdate = true;
+        };
+        if (then) { restore(); then(); }
+        else {
+          const p = overviewPose();
+          tweenTo(p.pos, p.look, 2.2, () => { restore(); mode = 'overview'; setHint('點選一座䔲，開始牽引'); updateCount(); });
+        }
+      }, 1200);
+    });
+  });
+}
+
+// 表單
+const dedText = () => ($('#dtitle').value + $('#dname').value.trim() + $('#dsuffix').value);
+async function refreshPreview() {
+  const t = $('#dname').value.trim() ? dedText() : ($('#dtitle').value + '○○○' + $('#dsuffix').value);
+  await fontReady(t); drawLabel($('#dprev'), t);
+}
+function refreshList() {
+  const L = $('#dlist');
+  if (!dedis.length) { L.innerHTML = ''; return; }
+  L.innerHTML = '<div style="opacity:.6;font-size:calc(12px*var(--ui));margin-bottom:4px">已貼的紅紙</div>' +
+    dedis.map((d, k) => `<div class="it"><span>${d.text.replace(/[<>&]/g, '')}</span><button data-see="${k}">看</button><button data-del="${k}">移除</button></div>`).join('');
+}
+function openDedi() { if (mode !== 'overview') return; $('#dedi').style.display = 'flex'; refreshPreview(); refreshList(); }
+function closeDedi() { $('#dedi').style.display = 'none'; }
+$('#dedibtn').addEventListener('click', openDedi);
+$('#dcancel').addEventListener('click', closeDedi);
+['#dtitle', '#dname', '#dsuffix'].forEach(q => $(q).addEventListener('input', refreshPreview));
+let pendingText = '';
+$('#dok').addEventListener('click', () => {
+  if (!$('#dname').value.trim()) { $('#dname').focus(); return; }
+  pendingText = dedText(); closeDedi();
+  mode = 'placing'; $('#btns').style.display = 'none';
+  setHint('點選一座䔲，貼上紅紙'); $('#back').style.display = 'block';
+});
+$('#dlist').addEventListener('click', e => {
+  const see = e.target.dataset.see, del = e.target.dataset.del;
+  if (see !== undefined) { closeDedi(); closeup(dedis[+see].i, null); }
+  if (del !== undefined) {
+    const d = dedis.splice(+del, 1)[0]; saveDedis();
+    const lb = labels[d.i];
+    if (lb) { lb.holder.removeFromParent(); lb.mesh.material.map.dispose(); lb.mesh.material.dispose(); labels[d.i] = null; }
+    refreshList();
+  }
+});
+async function placeLabel(i) {
+  if (!pendingText) return;
+  const text = pendingText; pendingText = ''; $('#back').style.display = 'none';
+  dedis = dedis.filter(d => d.i !== i); dedis.push({ i, text }); saveDedis();
+  await attachLabel(i, text);
+  closeup(i, null);
+}
 
 /* ---------------- input ---------------- */
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
@@ -1189,7 +1360,7 @@ cvs.addEventListener('pointermove', e => {
   ptr.lx = e.clientX; ptr.ly = e.clientY;
   if (mode === 'prologue') {
     P.yaw = THREE.MathUtils.clamp(P.yaw - dx * .003, -.45, .45);
-  } else if (mode === 'overview' && !tw) {
+  } else if ((mode === 'overview' || mode === 'placing') && !tw) {
     camYaw = THREE.MathUtils.clamp(camYaw - dx * .004, -.8, .8);
     camDist = THREE.MathUtils.clamp(camDist + dy * .04, 12, 32);
     const p = overviewPose(); camera.position.copy(p.pos); curLook.copy(p.look); camera.lookAt(curLook);
@@ -1213,14 +1384,16 @@ function endPtr(e) {
   if (mode === 'act2') { act2Swipe(e.clientX - ptr.x, e.clientY - ptr.y, dt); ptr = null; return; }
   ptr = null;
   if (mode === 'prologue' && moved < 10 && dt < 450) { if (P.beatT > 1.5 && BEATS[P.beat] && BEATS[P.beat].txt) nextBeat(); return; }
-  if (mode === 'overview' && moved < 10 && dt < 450) {
+  if ((mode === 'overview' || mode === 'placing') && moved < 10 && dt < 450) {
     ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
     ray.setFromCamera(ndc, camera);
     const hit = ray.intersectObject(field)[0];
-    if (hit && hit.instanceId !== undefined) {
-      if (done.has(hit.instanceId)) showMsg('此座已圓滿', 1400);
-      else enterFocus(hit.instanceId);
-    }
+    if (!hit || hit.instanceId === undefined) return;
+    const id = hit.instanceId;
+    if (mode === 'placing') { placeLabel(id); return; }
+    if (labels[id]) closeup(id, done.has(id) ? null : () => enterFocus(id));
+    else if (done.has(id)) showMsg('此座已圓滿', 1400);
+    else enterFocus(id);
   }
 }
 cvs.addEventListener('pointerup', endPtr);
