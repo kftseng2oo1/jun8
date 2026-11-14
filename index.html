@@ -35,7 +35,8 @@
   #fcp button{font:inherit;font-size:calc(13px*var(--ui));background:rgba(10,14,28,.6);color:#efe4cc;border:1px solid rgba(239,228,204,.3);
     border-radius:1.2em;padding:.35em .85em}
   #fcp button.on{background:linear-gradient(#c2483d,#8e2b23);border-color:#e3b14a;color:#fff3dc}
-  #fcp #fcExit{background:linear-gradient(#c2483d,#8e2b23);color:#fff3dc;border:0}
+  #fcp #fcExit{background:rgba(10,14,28,.6);color:#ffb0a0;border:1px solid rgba(232,90,70,.7)}
+  #fcp button:active{transform:scale(.95)}
   #top h1{font-size:calc(17px*var(--ui));margin:0;letter-spacing:.15em;font-weight:700;text-shadow:0 0 12px #000}
   #count{font-size:calc(13px*var(--ui));opacity:.8;text-shadow:0 0 8px #000}
   #hint{bottom:0;padding-bottom:calc(22px + env(safe-area-inset-bottom));font-size:calc(15px*var(--ui));line-height:1.6;
@@ -2211,12 +2212,12 @@ function enterFree() {
   freeCam = { from: mode }; ptr = null;
   $('#btns').style.display = 'none'; $('#cambtn').style.display = 'none'; setHint('');
   $('#fcp').style.display = 'block';
-  orbit.target.copy(curLook); orbit.enabled = true; orbit.autoRotate = false; $('#fcAuto').classList.remove('on'); orbit.update();
+  orbit.target.copy(curLook); orbit.enabled = true; orbit.autoRotate = false; $('#fcAuto').classList.remove('on'); markShot(null); stopOrbitDrift();
 }
 function exitFree() {
   if (!freeCam) return;
   const from = freeCam.from; freeCam = null;
-  orbit.enabled = false; orbit.autoRotate = false; $('#fcp').style.display = 'none';
+  stopOrbitDrift(); orbit.enabled = false; orbit.autoRotate = false; $('#fcAuto').classList.remove('on'); markShot(null); $('#fcp').style.display = 'none';
   curLook.copy(orbit.target);
   const p = overviewPose();
   if (from === 'overview' && mode === 'overview') { mode = 'focusing'; tweenTo(p.pos, p.look, 1.8, () => { mode = 'overview'; setHint('點選一座䔲，開始牽引'); updateCount(); }); }
@@ -2224,20 +2225,31 @@ function exitFree() {
 }
 const SHOTS = {
   all: () => { const p = overviewPose(); return [p.pos, p.look]; },
-  temple: () => [new V3(-6, 4, -4), new V3(0, 5, -19)],
+  temple: () => [new V3(-6, 4.8, -4), new V3(0, 3.6, -19)],
   big: () => [bigZhuangGroup.position.clone().add(new V3(3.5, 4.5, 7.5)), bigZhuangGroup.position.clone().add(new V3(0, 3.8, 0))],
   sky: () => [new V3(0, 46, 6), new V3(0, 0, 0)],
-  low: () => [new V3(2.2, .7, 14), new V3(0, 2.2, -10)],
+  low: () => [new V3(2.2, 1.3, 14), new V3(0, .9, -10)],
 };
 $('#cambtn').addEventListener('click', enterFree);
 $('#fcExit').addEventListener('click', exitFree);
 $('#fcAuto').addEventListener('click', () => { orbit.autoRotate = !orbit.autoRotate; $('#fcAuto').classList.toggle('on', orbit.autoRotate); });
+function markShot(k) { document.querySelectorAll('#fcp [data-s]').forEach(x => x.classList.toggle('on', x.dataset.s === k)); }
+function stopOrbitDrift() {   // 清掉拖曳後殘留的慣性，避免切換鏡頭後又飄走
+  const d = orbit.enableDamping; orbit.enableDamping = false; orbit.update(); orbit.enableDamping = d;
+}
 document.querySelectorAll('#fcp [data-s]').forEach(b => b.addEventListener('click', () => {
   if (!freeCam) return;
-  const [pos, look] = SHOTS[b.dataset.s]();
-  orbit.enabled = false; curLook.copy(orbit.target);
-  tweenTo(pos, look, 1.6, () => { orbit.target.copy(look); orbit.enabled = true; orbit.update(); });
+  const k = b.dataset.s, [pos, look] = SHOTS[k]();
+  markShot(k);
+  stopOrbitDrift(); orbit.enabled = false;
+  curLook.copy(orbit.target);
+  tweenTo(pos, look, 1.6, () => {
+    if (!freeCam) return;
+    orbit.target.copy(look); camera.lookAt(look);
+    orbit.enabled = true; stopOrbitDrift();
+  });
 }));
+orbit.addEventListener('start', () => { if (freeCam && !tw) markShot(null); });   // 手動拖曳就取消預設鏡頭的標示
 let camBtnShown = false;
 function syncCamBtn() { const v = camBtnVisible(); if (v !== camBtnShown) { camBtnShown = v; $('#cambtn').style.display = v ? 'inline-block' : 'none'; } }
 
