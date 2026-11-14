@@ -118,6 +118,19 @@
   #selGo{display:block;width:100%;margin-bottom:10px;background:linear-gradient(#c2483d,#8e2b23)!important;color:#fff3dc!important;border:0!important;
     font-size:calc(18px*var(--ui))!important;padding:.6em 1em!important;letter-spacing:.3em!important;box-shadow:0 0 18px rgba(255,90,60,.4)}
   #selGo:active{transform:scale(.97)}
+  #ricebtn{pointer-events:auto;background:linear-gradient(#d8b878,#9a7a3a);color:#2a1806;border:0;border-radius:1.5em;
+    padding:.6em 1.1em;font:inherit;font-size:calc(15px*var(--ui));letter-spacing:.12em;font-weight:700}
+  #rp{position:fixed;left:0;right:0;bottom:0;display:none;z-index:6;padding:0 8px calc(10px + env(safe-area-inset-bottom))}
+  #rp .panel{margin:0 auto;width:min(96vw,calc(420px*var(--ui)));background:rgba(32,20,10,.9);border:1px solid rgba(227,177,74,.5);border-radius:16px;padding:12px 14px}
+  #rpIns{text-align:center;font-size:calc(14px*var(--ui));line-height:1.6;margin-bottom:8px;letter-spacing:.06em}
+  #rpBody{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:10px}
+  #rpBody button{font:inherit;font-size:calc(13px*var(--ui));background:rgba(10,6,4,.55);color:#efe4cc;border:1px solid rgba(239,228,204,.3);border-radius:1.2em;padding:.3em .8em}
+  #rpBody button.on{background:linear-gradient(#c2483d,#8e2b23);border-color:#e3b14a;color:#fff3dc}
+  #rp .acts{display:flex;justify-content:space-between;gap:10px}
+  #rp .acts button{font:inherit;font-size:calc(15px*var(--ui));border-radius:1.4em;padding:.45em 1.2em;letter-spacing:.12em}
+  #rpQuit{background:none;color:#efe4cc;border:1px solid rgba(239,228,204,.35)}
+  #rpGo{background:linear-gradient(#c2483d,#8e2b23);color:#fff3dc;border:0}
+  #rpGo:disabled{opacity:.35}
   #craftbtn{pointer-events:auto;background:linear-gradient(#4fa66a,#2a6a40);color:#f2ffe8;border:0;border-radius:1.5em;
     padding:.6em 1.1em;font:inherit;font-size:calc(15px*var(--ui));letter-spacing:.12em;font-weight:700}
   #cp{position:fixed;left:0;right:0;bottom:0;display:none;z-index:6;padding:0 8px calc(10px + env(safe-area-inset-bottom))}
@@ -208,6 +221,11 @@
 <div id="cap"></div>
 <button id="skip">跳過序章 ›</button>
 <div id="fade"></div>
+<div id="rp"><div class="panel">
+  <div id="rpIns"></div>
+  <div id="rpBody"></div>
+  <div class="acts"><button id="rpQuit">離開</button><button id="rpGo" disabled>挑起出發</button></div>
+</div></div>
 <div id="selbar"><div class="bar">
   <div id="selInfo"></div>
   <button id="selGo">牽引這座䔲</button>
@@ -233,7 +251,7 @@
 <div id="fcp"><div class="bar">
   <div class="tip">單指拖曳旋轉・雙指縮放與平移</div>
   <button id="fcAuto">自動環繞</button><button data-s="all">全景</button><button data-s="temple">萬善祠</button>
-  <button data-s="big">大水䔲</button><button data-s="sky">鳥瞰</button><button data-s="low">低角度</button><button id="fcExit">結束</button>
+  <button data-s="big">大水䔲</button><button data-s="rice">飯擔區</button><button data-s="sky">鳥瞰</button><button data-s="low">低角度</button><button id="fcExit">結束</button>
 </div></div>
 <div id="bzp"><div class="panel">
   <h3>大水䔲 燈控</h3>
@@ -263,7 +281,7 @@
     <div class="ly" data-i="1"><span>中界・洗淨</span><i><b></b></i></div>
     <div class="ly" data-i="2"><span>上界・天堂</span><i><b></b></i></div>
   </div>
-  <div id="btns"><button id="pullbtn">牽䔲</button><button id="morebtn">更多 ▾</button><div id="more"><button id="craftbtn">製作水䔲</button><button id="templebtn">入廟參拜</button><button id="bzbtn">大䔲燈控</button><button id="dedibtn">貼紅紙・敬獻</button><button id="rite">倒䔲・燒䔲</button></div></div>
+  <div id="btns"><button id="pullbtn">牽䔲</button><button id="morebtn">更多 ▾</button><div id="more"><button id="ricebtn">挑飯擔</button><button id="craftbtn">製作水䔲</button><button id="templebtn">入廟參拜</button><button id="bzbtn">大䔲燈控</button><button id="dedibtn">貼紅紙・敬獻</button><button id="rite">倒䔲・燒䔲</button></div></div>
   <div id="hinttext"></div>
 </div>
 <div id="ending"><div class="box">
@@ -1465,7 +1483,7 @@ function showCap(txt) {
   showCap._t = setTimeout(() => { c.innerHTML = txt; c.style.opacity = txt ? 1 : 0; }, 450);
 }
 /* ---------------- 旁白：三種聲音（audio/<聲音>/<id>.mp3，由 tts/ 產生），失敗時改用裝置朗讀 ---------------- */
-const NARR = {"p0": {"cap": "清道光二十五年，<br>農曆六月初七。", "say": "清道光二十五年，農曆六月初七。"}, "p1": {"cap": "口湖沿海的村庄，<br>世代靠海維生。", "say": "口湖沿海的村莊，世代靠海維生。"}, "p2": {"cap": "這天，天色驟暗，<br>狂風暴雨挾著海潮撲來。", "say": "這天，天色驟暗，狂風暴雨挾著海潮撲來。"}, "p3": {"cap": "海水漫過堤岸，<br>倒灌進村子。", "say": "海水漫過堤岸，倒灌進村子。"}, "p4": {"cap": "一夜之間，<br>數千位鄉親，就這樣被海水帶走了。", "say": "一夜之間，數千位鄉親，就這樣被海水帶走了。"}, "p6": {"cap": "水退之後，罹難者人數龐大、無名可考，<br>鄉人將遺骸集體合葬，成為萬人塚。", "say": "水退之後，罹難者人數龐大，無名可考，鄉人將遺骸集體合葬，成為萬人塚。"}, "p65": {"cap": "地方官員奏請朝廷，<br>獲得允准與敕封，<br>正式賜名「萬善同歸」。", "say": "地方官員奏請朝廷，獲得允准與敕封，正式賜名，萬善同歸。"}, "p7": {"cap": "自此立塚祭祀，<br>香火年年不輟。", "say": "自此立塚祭祀，香火年年不輟。"}, "p8": {"cap": "一百八十年來，<br>每到這兩天，<br>口湖人便為他們牽䔲。", "say": "一百八十年來，每到這兩天，口湖人便為他們牽水狀。"}, "a0": {"cap": "農曆六月初七，入夜。", "say": "農曆六月初七，入夜。"}, "a1": {"cap": "鄉人來到水邊，<br>點起一盞盞水燈，", "say": "鄉人來到水邊，點起一盞盞水燈，"}, "a2": {"cap": "為水中的亡魂照亮回岸的路。", "say": "為水中的亡魂照亮回岸的路。"}, "a5": {"cap": "手指往上滑，<br>把水燈推向水面。", "say": "手指往上滑，把水燈推向水面。"}, "a3": {"cap": "水魂隨著燈光，<br>一一來到岸邊。", "say": "水魂隨著燈光，一一來到岸邊。"}, "a4": {"cap": "明日，<br>鄉人將為他們牽䔲。", "say": "明日，鄉人將為他們牽水狀。"}, "c0": {"cap": "六月初八，萬善祠前，<br>䔲陣林立。", "say": "六月初八，萬善祠前，水狀林立。"}, "c1": {"cap": "點選一座䔲，用手指繞圈，<br>牽引亡魂上岸。", "say": "點選一座水狀，用手指繞圈，牽引亡魂上岸。"}, "c2": {"cap": "下界水獄，圓滿。", "say": "下界水獄，圓滿。"}, "c3": {"cap": "中界洗淨，圓滿。", "say": "中界洗淨，圓滿。"}, "c4": {"cap": "上界天堂，圓滿。", "say": "上界天堂，圓滿。"}, "c5": {"cap": "水魂已牽引上岸。", "say": "水魂已牽引上岸。"}, "c6": {"cap": "三位道士出廟化緣，<br>化緣圓滿之後，便要倒䔲。", "say": "三位道士出廟化緣，化緣圓滿之後，便要倒狀。"}, "c7": {"cap": "化緣圓滿。", "say": "化緣圓滿。"}, "c8": {"cap": "倒䔲。", "say": "倒狀。"}, "c9": {"cap": "燒䔲。", "say": "燒狀。"}, "t0": {"cap": "入廟參拜，<br>先上三炷清香。", "say": "入廟參拜，先上三炷清香。"}, "t1": {"cap": "鐘鼓齊鳴，<br>祈願上達天聽。", "say": "鐘鼓齊鳴，祈願上達天聽。"}, "t2": {"cap": "祈福圓滿，<br>願萬善同歸，眾生平安。", "say": "祈福圓滿，願萬善同歸，眾生平安。"}, "t3": {"cap": "鮮花、水果、餅乾、金紙，<br>供品一應齊全。", "say": "擺上鮮花、水果、餅乾與金紙，供品一應齊全。"}, "w1": {"cap": "弟子誠心祈求萬善爺庇佑，闔家平安，出入順遂，一切圓滿，順利平安。", "say": "弟子誠心祈求萬善爺庇佑，闔家平安，出入順遂，一切圓滿，順利平安。"}, "w2": {"cap": "弟子誠心祈求萬善爺庇佑，身體健康，無病無災，福壽綿長，一切圓滿，順利平安。", "say": "弟子誠心祈求萬善爺庇佑，身體健康，無病無災，福壽綿長，一切圓滿，順利平安。"}, "w3": {"cap": "弟子誠心祈求萬善爺庇佑，事業順利，貴人相助，財源廣進，一切圓滿，順利平安。", "say": "弟子誠心祈求萬善爺庇佑，事業順利，貴人相助，財源廣進，一切圓滿，順利平安。"}, "w4": {"cap": "弟子誠心祈求萬善爺庇佑，學業進步，智慧大開，金榜題名，一切圓滿，順利平安。", "say": "弟子誠心祈求萬善爺庇佑，學業進步，智慧大開，金榜題名，一切圓滿，順利平安。"}, "w5": {"cap": "弟子誠心祈求萬善爺慈悲，超渡先靈，早登極樂，永脫苦海，一切圓滿，順利平安。", "say": "弟子誠心祈求萬善爺慈悲，超渡先靈，早登極樂，永脫苦海，一切圓滿，順利平安。"}, "w6": {"cap": "弟子誠心祈求萬善爺庇佑，風調雨順，國泰民安，鄉里平安，一切圓滿，順利平安。", "say": "弟子誠心祈求萬善爺庇佑，風調雨順，國泰民安，鄉里平安，一切圓滿，順利平安。"}, "m0": {"cap": "歡迎來到糊紙工坊，<br>一起親手做一座水䔲。", "say": "歡迎來到糊紙工坊，一起親手做一座水狀。"}, "m1": {"cap": "先用竹篾紮骨架，<br>手指畫圓，彎出竹圈。", "say": "先用竹篾紮骨架，手指畫圓，彎出竹圈。"}, "m2": {"cap": "骨架紮好了，<br>左右滑動，把紙糊上去。", "say": "骨架紮好了，左右滑動，把紙糊上去。"}, "m3": {"cap": "幫每一層挑選顏色與花樣。", "say": "幫每一層挑選顏色與花樣。"}, "m4": {"cap": "裝上屋頂、彩布與旗幡。", "say": "裝上屋頂、彩布與旗幡。"}, "m5": {"cap": "寫上敬獻者的名字，<br>水䔲就完成了。", "say": "寫上敬獻者的名字，水狀就完成了。"}, "m6": {"cap": "你親手做的水䔲，<br>已經送入萬善祠前的䔲陣。", "say": "你親手做的水狀，已經送入萬善祠前的水狀陣中。"}, "e0": {"cap": "功德圓滿。䔲已倒、紙已化，水中先人隨火光上岸。<br>一百八十年來，口湖人年年如此，<br>願逝者安息，生者平安。", "say": "功德圓滿。水狀已倒，紙已化，水中先人，隨火光上岸。一百八十年來，口湖人年年如此。願逝者安息，生者平安。"}};
+const NARR = {"p0": {"cap": "清道光二十五年，<br>農曆六月初七。", "say": "清道光二十五年，農曆六月初七。"}, "p1": {"cap": "口湖沿海的村庄，<br>世代靠海維生。", "say": "口湖沿海的村莊，世代靠海維生。"}, "p2": {"cap": "這天，天色驟暗，<br>狂風暴雨挾著海潮撲來。", "say": "這天，天色驟暗，狂風暴雨挾著海潮撲來。"}, "p3": {"cap": "海水漫過堤岸，<br>倒灌進村子。", "say": "海水漫過堤岸，倒灌進村子。"}, "p4": {"cap": "一夜之間，<br>數千位鄉親，就這樣被海水帶走了。", "say": "一夜之間，數千位鄉親，就這樣被海水帶走了。"}, "p6": {"cap": "水退之後，罹難者人數龐大、無名可考，<br>鄉人將遺骸集體合葬，成為萬人塚。", "say": "水退之後，罹難者人數龐大，無名可考，鄉人將遺骸集體合葬，成為萬人塚。"}, "p65": {"cap": "地方官員奏請朝廷，<br>獲得允准與敕封，<br>正式賜名「萬善同歸」。", "say": "地方官員奏請朝廷，獲得允准與敕封，正式賜名，萬善同歸。"}, "p7": {"cap": "自此立塚祭祀，<br>香火年年不輟。", "say": "自此立塚祭祀，香火年年不輟。"}, "p8": {"cap": "一百八十年來，<br>每到這兩天，<br>口湖人便為他們牽䔲。", "say": "一百八十年來，每到這兩天，口湖人便為他們牽水狀。"}, "a0": {"cap": "農曆六月初七，入夜。", "say": "農曆六月初七，入夜。"}, "a1": {"cap": "鄉人來到水邊，<br>點起一盞盞水燈，", "say": "鄉人來到水邊，點起一盞盞水燈，"}, "a2": {"cap": "為水中的亡魂照亮回岸的路。", "say": "為水中的亡魂照亮回岸的路。"}, "a5": {"cap": "手指往上滑，<br>把水燈推向水面。", "say": "手指往上滑，把水燈推向水面。"}, "a3": {"cap": "水魂隨著燈光，<br>一一來到岸邊。", "say": "水魂隨著燈光，一一來到岸邊。"}, "a4": {"cap": "明日，<br>鄉人將為他們牽䔲。", "say": "明日，鄉人將為他們牽水狀。"}, "c0": {"cap": "六月初八，萬善祠前，<br>䔲陣林立。", "say": "六月初八，萬善祠前，水狀林立。"}, "c1": {"cap": "點選一座䔲，用手指繞圈，<br>牽引亡魂上岸。", "say": "點選一座水狀，用手指繞圈，牽引亡魂上岸。"}, "c2": {"cap": "下界水獄，圓滿。", "say": "下界水獄，圓滿。"}, "c3": {"cap": "中界洗淨，圓滿。", "say": "中界洗淨，圓滿。"}, "c4": {"cap": "上界天堂，圓滿。", "say": "上界天堂，圓滿。"}, "c5": {"cap": "水魂已牽引上岸。", "say": "水魂已牽引上岸。"}, "c6": {"cap": "三位道士出廟化緣，<br>化緣圓滿之後，便要倒䔲。", "say": "三位道士出廟化緣，化緣圓滿之後，便要倒狀。"}, "c7": {"cap": "化緣圓滿。", "say": "化緣圓滿。"}, "c8": {"cap": "倒䔲。", "say": "倒狀。"}, "c9": {"cap": "燒䔲。", "say": "燒狀。"}, "t0": {"cap": "入廟參拜，<br>先上三炷清香。", "say": "入廟參拜，先上三炷清香。"}, "t1": {"cap": "鐘鼓齊鳴，<br>祈願上達天聽。", "say": "鐘鼓齊鳴，祈願上達天聽。"}, "t2": {"cap": "祈福圓滿，<br>願萬善同歸，眾生平安。", "say": "祈福圓滿，願萬善同歸，眾生平安。"}, "t3": {"cap": "鮮花、水果、餅乾、金紙，<br>供品一應齊全。", "say": "擺上鮮花、水果、餅乾與金紙，供品一應齊全。"}, "w1": {"cap": "弟子誠心祈求萬善爺庇佑，闔家平安，出入順遂，一切圓滿，順利平安。", "say": "弟子誠心祈求萬善爺庇佑，闔家平安，出入順遂，一切圓滿，順利平安。"}, "w2": {"cap": "弟子誠心祈求萬善爺庇佑，身體健康，無病無災，福壽綿長，一切圓滿，順利平安。", "say": "弟子誠心祈求萬善爺庇佑，身體健康，無病無災，福壽綿長，一切圓滿，順利平安。"}, "w3": {"cap": "弟子誠心祈求萬善爺庇佑，事業順利，貴人相助，財源廣進，一切圓滿，順利平安。", "say": "弟子誠心祈求萬善爺庇佑，事業順利，貴人相助，財源廣進，一切圓滿，順利平安。"}, "w4": {"cap": "弟子誠心祈求萬善爺庇佑，學業進步，智慧大開，金榜題名，一切圓滿，順利平安。", "say": "弟子誠心祈求萬善爺庇佑，學業進步，智慧大開，金榜題名，一切圓滿，順利平安。"}, "w5": {"cap": "弟子誠心祈求萬善爺慈悲，超渡先靈，早登極樂，永脫苦海，一切圓滿，順利平安。", "say": "弟子誠心祈求萬善爺慈悲，超渡先靈，早登極樂，永脫苦海，一切圓滿，順利平安。"}, "w6": {"cap": "弟子誠心祈求萬善爺庇佑，風調雨順，國泰民安，鄉里平安，一切圓滿，順利平安。", "say": "弟子誠心祈求萬善爺庇佑，風調雨順，國泰民安，鄉里平安，一切圓滿，順利平安。"}, "m0": {"cap": "歡迎來到糊紙工坊，<br>一起親手做一座水䔲。", "say": "歡迎來到糊紙工坊，一起親手做一座水狀。"}, "m1": {"cap": "先用竹篾紮骨架，<br>手指畫圓，彎出竹圈。", "say": "先用竹篾紮骨架，手指畫圓，彎出竹圈。"}, "m2": {"cap": "骨架紮好了，<br>左右滑動，把紙糊上去。", "say": "骨架紮好了，左右滑動，把紙糊上去。"}, "m3": {"cap": "幫每一層挑選顏色與花樣。", "say": "幫每一層挑選顏色與花樣。"}, "m4": {"cap": "裝上屋頂、彩布與旗幡。", "say": "裝上屋頂、彩布與旗幡。"}, "m5": {"cap": "寫上敬獻者的名字，<br>水䔲就完成了。", "say": "寫上敬獻者的名字，水狀就完成了。"}, "m6": {"cap": "你親手做的水䔲，<br>已經送入萬善祠前的䔲陣。", "say": "你親手做的水狀，已經送入萬善祠前的水狀陣中。"}, "r0": {"cap": "農曆六月初八，鄉人挑著飯擔，<br>來到萬善爺廟旁祭拜祖靈。", "say": "農曆六月初八，鄉人挑著飯擔，來到萬善爺廟旁，祭拜祖靈。"}, "r1": {"cap": "挑選要供奉的菜飯，<br>裝進竹籃。", "say": "挑選要供奉的菜飯，裝進竹籃。"}, "r2": {"cap": "挑起扁擔，出發。", "say": "挑起扁擔，出發。"}, "r3": {"cap": "飯菜已擺上供桌，<br>誠心祭拜先人。", "say": "飯菜已擺上供桌，誠心祭拜先人。"}, "r4": {"cap": "願祖靈安息，<br>庇佑子孫平安。", "say": "願祖靈安息，庇佑子孫平安。"}, "e0": {"cap": "功德圓滿。䔲已倒、紙已化，水中先人隨火光上岸。<br>一百八十年來，口湖人年年如此，<br>願逝者安息，生者平安。", "say": "功德圓滿。水狀已倒，紙已化，水中先人，隨火光上岸。一百八十年來，口湖人年年如此。願逝者安息，生者平安。"}};
 const VOICE_NAMES = { hsiaochen: '曉臻', hsiaoyu: '曉雨', yunjhe: '雲哲', off: '旁白關' };
 let voiceKey = 'hsiaochen', subsOn = false;
 try { voiceKey = localStorage.getItem('qsz-voice') || 'hsiaochen'; subsOn = localStorage.getItem('qsz-subs') === '1'; } catch (e) {}
@@ -2318,6 +2336,7 @@ const SHOTS = {
   all: () => { const p = overviewPose(); return [p.pos, p.look]; },
   temple: () => [new V3(-6, 4.8, -4), new V3(0, 3.6, -19)],
   big: () => [bigZhuangGroup.position.clone().add(new V3(3.5, 4.5, 7.5)), bigZhuangGroup.position.clone().add(new V3(0, 3.8, 0))],
+  rice: () => [new V3(28, 6.5, 5), new V3(21, 1.4, -9)],
   sky: () => [new V3(0, 46, 6), new V3(0, 0, 0)],
   low: () => [new V3(2.2, 1.3, 14), new V3(0, .9, -10)],
 };
@@ -3178,6 +3197,322 @@ function updatePick(t) {
 $('#morebtn').addEventListener('click', () => { $('#btns').classList.toggle('open'); $('#morebtn').textContent = $('#btns').classList.contains('open') ? '收起 ▴' : '更多 ▾'; });
 $('#more').addEventListener('click', e => { if (e.target.tagName === 'BUTTON') { $('#btns').classList.remove('open'); $('#morebtn').textContent = '更多 ▾'; } });
 
+/* ================= 挑飯擔祭祖靈：廟旁搭帳區、村民挑擔、玩家自己挑擔祭拜 ================= */
+const VC = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: .75 });
+function cgeo(geo, color, fn) {
+  if (fn) fn(geo);
+  const c = new THREE.Color(color), n = geo.attributes.position.count, a = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { a[i * 3] = c.r; a[i * 3 + 1] = c.g; a[i * 3 + 2] = c.b; }
+  geo.setAttribute('color', new THREE.BufferAttribute(a, 3));
+  return geo;
+}
+function rodGeo(a, b, r) {
+  const d = b.clone().sub(a), g = new THREE.CylinderGeometry(r, r, d.length(), 4);
+  g.applyQuaternion(new THREE.Quaternion().setFromUnitVectors(new V3(0, 1, 0), d.clone().normalize()));
+  const m = a.clone().add(b).multiplyScalar(.5); g.translate(m.x, m.y, m.z); return g;
+}
+const BASKET_PROF = [[0, 0], [.16, 0], [.19, .05], [.23, .32], [.245, .35]].map(([x, y]) => new THREE.Vector2(x, y));
+function basketGeo(cover, ropes, y0 = 0) {   // 竹籃（底在 y0），可含花布蓋與吊繩
+  const parts = [
+    cgeo(new THREE.LatheGeometry(BASKET_PROF, 16), 0xa8763a, g => g.translate(0, y0, 0)),
+    cgeo(new THREE.TorusGeometry(.245, .018, 5, 20), 0x8a5a28, g => { g.rotateX(Math.PI / 2); g.translate(0, y0 + .35, 0); }),
+    cgeo(new THREE.CircleGeometry(.16, 12), 0x7a4a20, g => { g.rotateX(-Math.PI / 2); g.translate(0, y0 + .01, 0); }),
+  ];
+  if (cover) parts.push(cgeo(new THREE.SphereGeometry(.25, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), cover, g => { g.scale(1, .55, 1); g.translate(0, y0 + .33, 0); }));
+  if (ropes) for (let k = 0; k < 3; k++) { const a = k / 3 * Math.PI * 2; parts.push(cgeo(rodGeo(new V3(Math.cos(a) * .24, y0 + .35, Math.sin(a) * .24), new V3(0, 0, 0), .008), 0xd8c090)); }
+  return mergeGeometries(parts);
+}
+const SHIRTS = [0x3a6ad8, 0xf2f2ee, 0x5a9ad8, 0x2a4aa8, 0xe8e0d0, 0x4a8acc];
+const COVERS = [0xd8282a, 0xc81e3a, 0xf2f2ee, 0xe0382a];
+function makeVillager({ shirt = 0x3a6ad8, pants = 0x1e2a44, hat = 0xd8bf88, cover = 0xd8282a, player = false } = {}) {
+  const g = new THREE.Group();
+  const body = mergeGeometries([
+    cgeo(new THREE.CylinderGeometry(.17, .2, .62, 12), shirt, x => x.translate(0, 1.17, 0)),
+    cgeo(new THREE.SphereGeometry(.115, 12, 10), 0xe0b48a, x => x.translate(0, 1.6, 0)),
+    cgeo(new THREE.ConeGeometry(.42, .17, 20), hat, x => x.translate(0, 1.79, 0)),
+    cgeo(new THREE.ConeGeometry(.1, .1, 12), hat, x => x.translate(0, 1.9, 0)),
+    cgeo(new THREE.CylinderGeometry(.045, .05, .56, 8), shirt, x => { x.rotateZ(.08); x.translate(-.22, 1.15, 0); }),
+    cgeo(new THREE.SphereGeometry(.045, 8, 6), 0xe0b48a, x => x.translate(-.24, .86, 0)),
+    cgeo(rodGeo(new V3(.2, 1.42, 0), new V3(.2, 1.47, .26), .05), shirt),
+    cgeo(new THREE.SphereGeometry(.045, 8, 6), 0xe0b48a, x => x.translate(.2, 1.5, .27)),
+    cgeo(new THREE.CylinderGeometry(.022, .022, 1.75, 6), 0xc8a060, x => { x.rotateX(Math.PI / 2); x.translate(.2, 1.52, 0); }),
+  ]);
+  g.add(new THREE.Mesh(body, VC));
+  const legGeo = mergeGeometries([
+    cgeo(new THREE.CylinderGeometry(.065, .06, .8, 8), pants, x => x.translate(0, -.4, 0)),
+    cgeo(new THREE.SphereGeometry(.07, 8, 6), 0x222222, x => { x.scale(1, .6, 1.5); x.translate(0, -.82, .04); }),
+  ]);
+  const legs = [-1, 1].map(sx => { const p = new THREE.Group(); p.position.set(sx * .09, .86, 0); p.add(new THREE.Mesh(legGeo, VC)); g.add(p); return p; });
+  const baskets = [-1, 1].map(sz => {
+    const pv = new THREE.Group(); pv.position.set(.2, 1.52, sz * .8); g.add(pv);
+    const mesh = new THREE.Mesh(basketGeo(player ? null : cover, true, -1.0), VC); pv.add(mesh);
+    const content = new THREE.Group(); content.position.y = -1.0; pv.add(content);
+    let coverMesh = null;
+    if (player) { coverMesh = new THREE.Mesh(cgeo(new THREE.SphereGeometry(.25, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), cover, x => { x.scale(1, .55, 1); x.translate(0, -.67, 0); }), VC); coverMesh.visible = false; pv.add(coverMesh); }
+    return { pv, mesh, content, cover: coverMesh };
+  });
+  if (player) {   // 玩家頭上的標記
+    const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW, color: 0xffd060, blending: THREE.AdditiveBlending, depthWrite: false }));
+    m.scale.set(.5, .5, 1); m.position.y = 2.2; g.add(m);
+  }
+  return { g, legs, baskets, ph: Math.random() * 6 };
+}
+function animWalk(v, dt, moving) {
+  v.ph += dt * (moving ? 7 : 0);
+  const sw = moving ? Math.sin(v.ph) : 0;
+  v.legs[0].rotation.x = sw * .45; v.legs[1].rotation.x = -sw * .45;
+  v.g.children[0].position.y = moving ? Math.abs(Math.cos(v.ph)) * .035 : 0;
+  v.baskets.forEach((b, k) => { b.pv.rotation.x += ((moving ? Math.sin(v.ph * .5 + k) * .14 : 0) - b.pv.rotation.x) * Math.min(1, dt * 6); });
+}
+
+// ---- 帳棚 ----
+const TENT = { x: 21, z0: -4, z1: -16, r: 3.4, h: 2.5 };
+let tentGroup = null;
+const tableSpots = [];
+let tableBaskets = null, tableShown = 0;
+const altarSpots = [];
+const incenseR = [];
+(function tent() {
+  const g = new THREE.Group(), L = TENT.z0 - TENT.z1, cz = (TENT.z0 + TENT.z1) / 2;
+  const stripe = canvasTex(64, 256, (x, W, H) => { for (let i = 0; i < H; i += 32) { x.fillStyle = (i / 32) % 2 ? '#f2ece0' : '#c8402e'; x.fillRect(0, i, W, 32); } });
+  stripe.wrapS = stripe.wrapT = THREE.RepeatWrapping; stripe.repeat.set(1, 3);
+  const canvasM = new THREE.MeshStandardMaterial({ map: stripe, side: THREE.DoubleSide, roughness: .9, emissive: 0xffffff, emissiveMap: stripe, emissiveIntensity: .12 });
+  const arch = new THREE.Mesh(new THREE.CylinderGeometry(TENT.r, TENT.r, L, 28, 1, true, Math.PI / 2, Math.PI), canvasM);
+  arch.rotation.x = Math.PI / 2; arch.position.set(TENT.x, TENT.h, cz); g.add(arch);
+  const postM = new THREE.MeshStandardMaterial({ color: 0xe8e4dc, roughness: .6 });
+  for (let z = TENT.z0; z >= TENT.z1 - .01; z -= 2) for (const sx of [-1, 1]) {
+    const p = new THREE.Mesh(new THREE.CylinderGeometry(.05, .05, TENT.h, 8), postM); p.position.set(TENT.x + sx * TENT.r, TENT.h / 2, z); g.add(p);
+  }
+  for (let z = TENT.z0; z >= TENT.z1 - .01; z -= 4) { const rib = new THREE.Mesh(new THREE.TorusGeometry(TENT.r, .035, 6, 28, Math.PI), postM); rib.position.set(TENT.x, TENT.h, z); g.add(rib); }
+  const brick = canvasTex(256, 256, (x, W, H) => { x.fillStyle = '#7a5a48'; x.fillRect(0, 0, W, H); x.strokeStyle = 'rgba(40,25,18,.6)'; x.lineWidth = 3;
+    for (let i = 0; i <= W; i += 32) { x.beginPath(); x.moveTo(i, 0); x.lineTo(i, H); x.stroke(); x.beginPath(); x.moveTo(0, i); x.lineTo(W, i); x.stroke(); }
+    for (let k = 0; k < 300; k++) { x.fillStyle = `rgba(255,230,210,${Math.random() * .06})`; x.fillRect(Math.random() * W, Math.random() * H, 3, 3); } });
+  brick.wrapS = brick.wrapT = THREE.RepeatWrapping; brick.repeat.set(2, 4);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(TENT.r * 2 + .6, L + .6), new THREE.MeshStandardMaterial({ map: brick, roughness: .85 }));
+  floor.rotation.x = -Math.PI / 2; floor.position.set(TENT.x, .015, cz); g.add(floor);
+  const path = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 34), new THREE.MeshStandardMaterial({ map: brick, roughness: .9, color: 0xb0a090 }));
+  path.rotation.x = -Math.PI / 2; path.position.set(TENT.x, .012, TENT.z0 + 17); g.add(path);
+  // 橫幅
+  const ban = canvasTex(1024, 160, (x, W, H) => {
+    x.fillStyle = '#d02a24'; x.fillRect(0, 0, W, H); x.strokeStyle = '#f6d98a'; x.lineWidth = 4; x.strokeRect(8, 8, W - 16, H - 16);
+    x.fillStyle = '#ffffff'; x.font = `900 78px ${FONT_T}`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('萬善爺廟　挑飯擔祭祖靈', W / 2, H / 2 + 4);
+  });
+  const banner = new THREE.Mesh(new THREE.PlaneGeometry(5.6, .88), new THREE.MeshStandardMaterial({ map: ban, side: THREE.DoubleSide, emissive: 0xffffff, emissiveMap: ban, emissiveIntensity: .45 }));
+  banner.position.set(TENT.x, 4.3, TENT.z0 + .02); g.add(banner);
+  // 長桌（紅桌布）
+  const clothM = new THREE.MeshStandardMaterial({ color: 0xb8181e, roughness: .8 });
+  for (const sx of [-1, 1]) {
+    const t = new THREE.Mesh(new THREE.BoxGeometry(.85, .76, 8.4), clothM); t.position.set(TENT.x + sx * 2.1, .38, -9.4); g.add(t);
+    for (let k = 0; k < 12; k++) tableSpots.push(new V3(TENT.x + sx * 2.1, .76, -5.6 - k * .68));
+  }
+  // 祭壇：牌位、香爐、紅燭
+  const alt = new THREE.Mesh(new THREE.BoxGeometry(3.4, .8, .9), clothM); alt.position.set(TENT.x, .4, -14.7); g.add(alt);
+  const tabT = canvasTex(256, 384, (x, W, H) => {
+    x.fillStyle = '#d4a843'; x.fillRect(0, 0, W, H); x.fillStyle = '#8e1414'; x.fillRect(14, 14, W - 28, H - 28);
+    x.fillStyle = '#f6d98a'; x.font = `900 52px ${FONT_T}`; x.textAlign = 'center'; x.textBaseline = 'middle';
+    '萬善同歸'.split('').forEach((c, i) => x.fillText(c, W / 2 + 46, 70 + i * 78));
+    x.font = `700 40px ${FONT_T}`; '列位祖靈'.split('').forEach((c, i) => x.fillText(c, W / 2 - 50, 80 + i * 76));
+  });
+  const tab = new THREE.Mesh(new THREE.BoxGeometry(.8, 1.2, .08), [clothM, clothM, clothM, clothM, new THREE.MeshStandardMaterial({ map: tabT, emissive: 0xffffff, emissiveMap: tabT, emissiveIntensity: .35 }), clothM]);
+  tab.position.set(TENT.x, 1.42, -15.0); g.add(tab);
+  const burner = new THREE.Mesh(new THREE.LatheGeometry([[0, 0], [.16, 0], [.19, .04], [.15, .08], [.18, .2], [.24, .23], [.24, .27], [0, .27]].map(([a, b]) => new THREE.Vector2(a, b)), 20),
+    new THREE.MeshStandardMaterial({ color: 0x7a5a2a, metalness: .5, roughness: .4 }));
+  burner.position.set(TENT.x, .8, -14.75); g.add(burner);
+  for (const sx of [-1, 1]) {
+    const c = new THREE.Mesh(new THREE.CylinderGeometry(.04, .04, .32, 8), new THREE.MeshStandardMaterial({ color: 0xd8201a })); c.position.set(TENT.x + sx * 1.3, .96, -14.9); g.add(c);
+    const f = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW, color: 0xffb050, blending: THREE.AdditiveBlending, depthWrite: false })); f.scale.set(.22, .3, 1); f.position.set(TENT.x + sx * 1.3, 1.18, -14.9); g.add(f);
+  }
+  for (let k = 0; k < 6; k++) altarSpots.push(new V3(TENT.x - 1.05 + k * .42, .8, -14.4));
+  [-.06, 0, .06].forEach(dx => {
+    const st = new THREE.Mesh(new THREE.CylinderGeometry(.008, .008, .45, 5), new THREE.MeshStandardMaterial({ color: 0xa8321e })); st.position.set(TENT.x + dx, 1.25, -14.75); st.visible = false; g.add(st);
+    const tip = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW, color: 0xff4a1a, blending: THREE.AdditiveBlending, depthWrite: false })); tip.scale.set(.09, .09, 1); tip.position.set(TENT.x + dx, 1.48, -14.75); tip.visible = false; g.add(tip);
+    incenseR.push({ st, tip });
+  });
+  // 燈：沿著棚頂一串紅燈籠＋帳內燈光
+  for (let z = TENT.z0 - .5; z > TENT.z1; z -= 1.6) {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW, color: 0xff7a40, blending: THREE.AdditiveBlending, depthWrite: false })); s.scale.set(.8, .8, 1); s.position.set(TENT.x, TENT.h + TENT.r - .35, z); g.add(s);
+  }
+  for (const z of [-7, -13]) { const l = new THREE.PointLight(0xffd8a8, 28, 0, 2); l.position.set(TENT.x, 4.4, z); g.add(l); }
+  mergeStatic(g);
+  scene.add(g); tentGroup = g;
+  // 長桌上的飯擔（陸續被村民擺上）
+  tableBaskets = new THREE.InstancedMesh(basketGeo(0xd8282a, false), VC, tableSpots.length);
+  const cols = COVERS.map(c => new THREE.Color(1, 1, 1));
+  tableSpots.forEach((p, i) => tableBaskets.setMatrixAt(i, ZERO));
+  scene.add(tableBaskets);
+  for (let i = 0; i < 8; i++) showTableBasket();
+})();
+function showTableBasket() {
+  if (tableShown >= tableSpots.length) return false;
+  const order = tableShown % 2 ? tableSpots.length / 2 + Math.floor(tableShown / 2) : Math.floor(tableShown / 2);
+  const p = tableSpots[order]; tmpQ.setFromAxisAngle(UP, Math.random() * 6);
+  tableBaskets.setMatrixAt(order, tmpM.compose(p, tmpQ, new V3(.95, .95, .95)));
+  tableBaskets.instanceMatrix.needsUpdate = true; tableBaskets.computeBoundingSphere();
+  tableShown++; return true;
+}
+
+// ---- 村民：沿步道挑擔走進帳棚，擺上飯擔後空手走回 ----
+const villagers = [];
+for (let k = 0; k < 5; k++) {
+  const v = makeVillager({ shirt: SHIRTS[k % SHIRTS.length], cover: COVERS[k % COVERS.length] });
+  v.g.scale.setScalar(.95 + Math.random() * .1); scene.add(v.g);
+  v.state = 'in'; v.t = -k * 4; v.side = k % 2 ? 1 : -1;
+  villagers.push(v);
+}
+const V_SPEED = 1.15;
+function vRoute(v) {
+  const sx = TENT.x + v.side * .5, slotZ = -6 - Math.random() * 6;
+  return v.state === 'in'
+    ? [new V3(sx + (Math.random() - .5) * .6, 0, 16), new V3(sx, 0, TENT.z0 + .5), new V3(sx, 0, slotZ)]
+    : [v.g.position.clone(), new V3(TENT.x - v.side * .5, 0, TENT.z0 + .5), new V3(TENT.x - v.side * .5, 0, 16)];
+}
+function updateVillagers(dt) {
+  villagers.forEach(v => {
+    if (v.t < 0) { v.t += dt; v.g.visible = false; return; }
+    if (!v.route) { v.route = vRoute(v); v.seg = 0; v.g.position.copy(v.route[0]); v.wait = 0; v.baskets.forEach(b => b.pv.visible = v.state === 'in'); }
+    v.g.visible = true;
+    if (v.wait > 0) { v.wait -= dt; animWalk(v, dt, false); if (v.wait <= 0) { v.state = 'out'; v.route = vRoute(v); v.seg = 0; } return; }
+    const a = v.route[v.seg], b = v.route[v.seg + 1];
+    if (!b) {
+      if (v.state === 'in') { v.wait = 1.4; v.baskets.forEach(x => x.pv.visible = false); showTableBasket(); v.g.rotation.y = v.side > 0 ? Math.PI / 2 : -Math.PI / 2; }
+      else { v.state = 'in'; v.route = null; v.t = -2 - Math.random() * 6; }
+      return;
+    }
+    const d = b.clone().sub(v.g.position); const len = d.length();
+    if (len < .05) { v.seg++; return; }
+    v.g.position.addScaledVector(d.normalize(), Math.min(len, V_SPEED * dt));
+    v.g.rotation.y = Math.atan2(d.x, d.z);
+    animWalk(v, dt, true);
+  });
+}
+
+// ---- 玩家挑飯擔 ----
+const DISHES = [['白飯', 0xf6f2ea, 'dome'], ['油飯', 0x9a6a3a, 'dome'], ['炒米粉', 0xe0c890, 'flat'], ['滷肉', 0x6a3a1a, 'cubes'], ['全雞', 0xe8b860, 'chicken'],
+  ['煎魚', 0xc89848, 'fish'], ['紅龜粿', 0xd8282a, 'turtle'], ['發粿', 0xf08ab0, 'cup'], ['菜頭粿', 0xf2ecd8, 'block'], ['水果', 0xff8a1a, 'fruit']];
+function dishMesh(color, kind) {
+  const G = new THREE.Group(), M = new THREE.MeshStandardMaterial({ color, roughness: .6 });
+  const plate = new THREE.Mesh(new THREE.CylinderGeometry(.15, .12, .025, 18), new THREE.MeshStandardMaterial({ color: 0xf4f2ec, roughness: .3 })); plate.position.y = .012; G.add(plate);
+  const add = (geo, x = 0, y = 0, z = 0, sc) => { const m = new THREE.Mesh(geo, M); m.position.set(x, y, z); if (sc) m.scale.set(...sc); G.add(m); return m; };
+  if (kind === 'dome') add(new THREE.SphereGeometry(.1, 14, 10), 0, .04, 0, [1, .7, 1]);
+  if (kind === 'flat') add(new THREE.CylinderGeometry(.11, .12, .045, 16), 0, .045);
+  if (kind === 'cubes') for (let k = 0; k < 6; k++) add(new THREE.BoxGeometry(.05, .04, .05), Math.cos(k) * .06, .045 + (k % 2) * .03, Math.sin(k) * .06);
+  if (kind === 'chicken') { add(new THREE.SphereGeometry(.1, 14, 10), 0, .08, 0, [1.3, .75, 1]); add(new THREE.SphereGeometry(.035, 8, 6), .12, .12, 0); }
+  if (kind === 'fish') { add(new THREE.SphereGeometry(.07, 12, 8), 0, .05, 0, [2, .55, .8]); add(new THREE.ConeGeometry(.05, .07, 4), -.15, .05, 0, [1, 1, .3]).rotation.z = Math.PI / 2; }
+  if (kind === 'turtle') { add(new THREE.CylinderGeometry(.1, .1, .03, 16), 0, .04, 0, [1.2, 1, .9]); }
+  if (kind === 'cup') for (let k = 0; k < 3; k++) { add(new THREE.CylinderGeometry(.05, .035, .06, 10), Math.cos(k * 2.1) * .06, .05, Math.sin(k * 2.1) * .06); add(new THREE.SphereGeometry(.045, 8, 6), Math.cos(k * 2.1) * .06, .09, Math.sin(k * 2.1) * .06); }
+  if (kind === 'block') add(new THREE.BoxGeometry(.18, .05, .11), 0, .05);
+  if (kind === 'fruit') [[0, 0], [.06, .04], [-.06, .04]].forEach(([x, z], k) => add(new THREE.SphereGeometry(.045, 10, 8), x, .06 + (k ? 0 : .03), z));
+  return G;
+}
+const RICE = { phase: '', yaw: 0, chosen: [], player: null, route: null, seg: 0, bow: 0, bowT: -1, cp: null, cl: null, placed: [] };
+let riceCount = 0;
+try { riceCount = +localStorage.getItem('qsz-rice') || 0; } catch (e) {}
+function riceIns(t) { $('#rpIns').innerHTML = t; }
+function renderRicePick() {
+  riceIns(`挑選要供奉的菜飯（最多 6 樣，已選 ${RICE.chosen.length}）`);
+  $('#rpBody').innerHTML = DISHES.map(([n], k) => `<button data-k="${k}" class="${RICE.chosen.includes(k) ? 'on' : ''}">${n}</button>`).join('');
+  $('#rpBody').style.display = 'flex';
+  $('#rpGo').disabled = !RICE.chosen.length; $('#rpGo').style.display = 'inline-block'; $('#rpGo').textContent = '挑起出發';
+}
+function refillBaskets() {
+  RICE.player.baskets.forEach(b => b.content.clear());
+  RICE.chosen.forEach((k, i) => {
+    const b = RICE.player.baskets[i % 2], j = Math.floor(i / 2), [, c, kind] = DISHES[k];
+    const m = dishMesh(c, kind); m.scale.setScalar(.85); m.position.set([0, -.05, .05][j], .1 + j * .08, [0, .05, -.05][j]); b.content.add(m);
+  });
+}
+$('#rpBody').addEventListener('click', e => {
+  const k = e.target.dataset.k; if (k === undefined || RICE.phase !== 'pick') return;
+  const i = RICE.chosen.indexOf(+k);
+  if (i >= 0) RICE.chosen.splice(i, 1); else if (RICE.chosen.length < 6) RICE.chosen.push(+k); else { showMsg('竹籃裝滿了', 1200); return; }
+  if (ac) bell(880 + RICE.chosen.length * 60);
+  refillBaskets(); renderRicePick();
+});
+function enterRice() {
+  if (mode !== 'overview') return;
+  unpick(); mode = 'rfade'; $('#btns').style.display = 'none'; setHint(''); fade(1);
+  setTimeout(() => {
+    mode = 'rice'; RICE.phase = 'pick'; RICE.yaw = 0; RICE.chosen = []; RICE.bow = 0; RICE.bowT = -1;
+    RICE.placed.forEach(o => o.removeFromParent()); RICE.placed = [];
+    incenseR.forEach(o => o.st.visible = o.tip.visible = false);
+    const v = makeVillager({ shirt: 0xf6f2ea, pants: 0x222a3a, cover: 0xd8282a, player: true });
+    v.g.position.set(TENT.x, 0, 7); v.g.rotation.y = Math.PI; scene.add(v.g); RICE.player = v;
+    RICE.cp = null; RICE.cl = null;
+    $('#rp').style.display = 'block'; $('#count').textContent = '挑飯擔'; renderRicePick();
+    fade(0); playCaps([['r0', 3], ['r1', 2.5]]);
+  }, 1500);
+}
+function riceGo() {
+  if (RICE.phase === 'pick') {
+    if (!RICE.chosen.length) return;
+    RICE.phase = 'walk'; RICE.player.baskets.forEach(b => b.cover.visible = true);
+    RICE.route = [new V3(TENT.x, 0, TENT.z0 + .4), new V3(TENT.x - .3, 0, -12.2), new V3(TENT.x - .85, 0, -13.3)]; RICE.seg = 0;
+    $('#rpBody').style.display = 'none'; $('#rpGo').style.display = 'none'; riceIns('挑著飯擔走向帳棚…（拖曳可轉動視角）');
+    capsCancel(); narrate('r2');
+  } else if (RICE.phase === 'arrive') {
+    RICE.phase = 'pray'; $('#rpGo').style.display = 'none'; riceIns('上香，三拜…');
+    incenseR.forEach(o => { o.st.visible = o.tip.visible = true; }); bell(784); RICE.bowT = 0;
+    setTimeout(async () => {
+      if (mode !== 'rice') return;
+      const s = new V3(TENT.x, 1.6, -14.6);
+      for (let k = 0; k < 60; k++) emit(s.x + (Math.random() - .5) * 2.4, .9 + Math.random() * .5, s.z + Math.random() * .6, (Math.random() - .5) * .3, .8 + Math.random() * 1.2, (Math.random() - .5) * .3, 2 + Math.random() * 1.5, 1, .82, .4);
+      riceCount++; try { localStorage.setItem('qsz-rice', riceCount); } catch (e) {}
+      showMsg('祭拜祖靈圓滿', 3200); strikeBellOut();
+      await sayLine('r4');
+      riceIns(`祭拜圓滿・已挑飯擔 ${riceCount} 次`); $('#rpGo').textContent = '完成'; $('#rpGo').style.display = 'inline-block'; $('#rpGo').disabled = false; RICE.phase = 'done';
+    }, 4200);
+  } else if (RICE.phase === 'done') leaveRice();
+}
+function strikeBellOut() { if (ac) { bell(523); setTimeout(() => bell(659), 300); setTimeout(() => bell(784), 600); } }
+$('#ricebtn').addEventListener('click', enterRice);
+$('#rpGo').addEventListener('click', riceGo);
+$('#rpQuit').addEventListener('click', leaveRice);
+function leaveRice() {
+  if (mode !== 'rice') return;
+  mode = 'rfade'; $('#rp').style.display = 'none'; capsCancel(); fade(1);
+  setTimeout(() => {
+    if (RICE.player) { RICE.player.g.removeFromParent(); RICE.player = null; }
+    const p = overviewPose(); camera.position.copy(p.pos); curLook.copy(p.look); camera.lookAt(curLook);
+    mode = 'overview'; fade(0); setHint('點一座䔲選取，或按「牽䔲」'); updateCount();
+  }, 1500);
+}
+function updateRice(dt, t) {
+  const v = RICE.player; if (!v) return;
+  let moving = false;
+  if (RICE.phase === 'walk') {
+    const b = RICE.route[RICE.seg];
+    const d = b.clone().sub(v.g.position), len = d.length();
+    if (len < .05) {
+      RICE.seg++;
+      if (!RICE.route[RICE.seg]) {   // 抵達祭壇：把菜飯擺上供桌
+        RICE.phase = 'arrive'; v.g.rotation.y = Math.PI;
+        v.baskets.forEach(x => { x.cover.visible = false; x.content.visible = false; });
+        RICE.chosen.forEach((k, i) => { const [, c, kind] = DISHES[k]; const m = dishMesh(c, kind); m.position.copy(altarSpots[i]); scene.add(m); RICE.placed.push(m);
+          for (let n = 0; n < 4; n++) emit(m.position.x, .95, m.position.z, (Math.random() - .5) * .3, .4 + Math.random() * .4, (Math.random() - .5) * .3, 1 + Math.random(), .8, .55, .2); });
+        if (ac) bell(988);
+        riceIns('菜飯已擺上供桌'); $('#rpGo').textContent = '上香祭拜'; $('#rpGo').style.display = 'inline-block'; $('#rpGo').disabled = false;
+        narrate('r3');
+      }
+    } else { v.g.position.addScaledVector(d.normalize(), Math.min(len, 1.3 * dt)); v.g.rotation.y = Math.atan2(d.x, d.z); moving = true; }
+  }
+  animWalk(v, dt, moving);
+  // 上香三拜
+  if (RICE.bowT >= 0) { RICE.bowT += dt; RICE.bow = RICE.bowT < 4 ? Math.max(0, Math.sin(RICE.bowT / 4 * Math.PI * 3)) : 0; if (RICE.bowT > 4.2) RICE.bowT = -1; }
+  if (incenseR[0].tip.visible) incenseR.forEach(o => { if (Math.random() < dt * 6) emit(o.tip.position.x, o.tip.position.y, o.tip.position.z, (Math.random() - .5) * .05, .3, (Math.random() - .5) * .05, 2.5, .3, .3, .3); });
+  // 鏡頭
+  const p = v.g.position;
+  let pos, look;
+  if (RICE.phase === 'pick') { pos = p.clone().add(new V3(1.7, 2.1, 2.6)); look = p.clone().add(new V3(0, .6, 0)); }
+  else if (RICE.phase === 'walk') { pos = p.clone().add(new V3(2.2, 2.5, 4.4)); look = p.clone().add(new V3(0, 1.1, -2.2)); }
+  else { pos = new V3(TENT.x + 1.3, 2.2, -10.9); look = new V3(TENT.x + .25, .95, -14.6); }
+  RICE.cp = RICE.cp || pos.clone(); RICE.cl = RICE.cl || look.clone();
+  const k = 1 - Math.exp(-dt * 3);
+  RICE.cp.lerp(pos, k); RICE.cl.lerp(look, k);
+  const off = RICE.cp.clone().sub(RICE.cl).applyAxisAngle(UP, RICE.yaw);
+  camera.position.copy(RICE.cl).add(off); camera.position.y -= RICE.bow * .3;
+  curLook.copy(RICE.cl); curLook.y -= RICE.bow * .5; camera.lookAt(curLook);
+}
+
 /* ---------------- input ---------------- */
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 let ptr = null; // {id, x, y, t, lx, ly, lastA}
@@ -3203,6 +3538,8 @@ cvs.addEventListener('pointermove', e => {
     camYaw = THREE.MathUtils.clamp(camYaw - dx * .004, -.8, .8);
     camDist = THREE.MathUtils.clamp(camDist + dy * .04, 12, 32);
     const p = overviewPose(); camera.position.copy(p.pos); curLook.copy(p.look); camera.lookAt(curLook);
+  } else if (mode === 'rice') {
+    RICE.yaw = THREE.MathUtils.clamp(RICE.yaw - dx * .005, -1.3, 1.3);
   } else if (mode === 'craft') {
     craftMove(e, dx);
   } else if (mode === 'temple') {
@@ -3235,6 +3572,7 @@ function endPtr(e) {
     ray.setFromCamera(ndc, camera);
     let hit = ray.intersectObject(field)[0];
     { const ch = customHit(ray); if (ch && (!hit || ch.distance < hit.distance)) hit = ch; }
+    if (mode === 'overview' && tentGroup && !hit && ray.intersectObject(tentGroup, true)[0]) { enterRice(); return; }
     if (mode === 'overview' && templeGroup && !hit) {
       if (ray.intersectObject(templeGroup, true)[0]) { enterTemple(); return; }
     }
@@ -3321,7 +3659,7 @@ function tick() {
 
   if (rite && mode !== 'ended') updateRite(dt);
   if (mode === 'alms' && alms) updateAlms(dt);
-  if (activeScene === scene) { updateBig(dt, t); updatePick(t); }
+  if (activeScene === scene) { updateBig(dt, t); updatePick(t); updateVillagers(dt, t); if (mode === 'rice') updateRice(dt, t); }
   if (mode === 'temple') updateTemple(dt, t);
   if (mode === 'craft') updateCraft(dt, t);
   if (sel >= 0) {
