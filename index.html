@@ -17,54 +17,58 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700&display=swap" rel="stylesheet">
 <style>
+  :root{--ui:1}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;height:100%;background:#070b16;overflow:hidden;color:#efe4cc;
     font-family:"Noto Serif TC","Songti TC","PMingLiU",serif;-webkit-user-select:none;user-select:none}
   canvas{display:block;touch-action:none;position:fixed;inset:0}
   .hud{position:fixed;left:0;right:0;pointer-events:none;text-align:center;padding:0 16px}
   #top{top:0;padding-top:calc(14px + env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:center;text-align:left}
-  #top h1{font-size:17px;margin:0;letter-spacing:.15em;font-weight:700;text-shadow:0 0 12px #000}
-  #count{font-size:13px;opacity:.8;text-shadow:0 0 8px #000}
-  #hint{bottom:0;padding-bottom:calc(22px + env(safe-area-inset-bottom));font-size:15px;line-height:1.6;
+  #top h1{font-size:calc(17px*var(--ui));margin:0;letter-spacing:.15em;font-weight:700;text-shadow:0 0 12px #000}
+  #count{font-size:calc(13px*var(--ui));opacity:.8;text-shadow:0 0 8px #000}
+  #hint{bottom:0;padding-bottom:calc(22px + env(safe-area-inset-bottom));font-size:calc(15px*var(--ui));line-height:1.6;
     text-shadow:0 0 10px #000,0 0 4px #000;transition:opacity .5s}
   #layers{display:none;justify-content:center;gap:10px;margin-bottom:12px}
-  .ly{width:92px}
-  .ly span{display:block;font-size:12px;opacity:.55;margin-bottom:5px;transition:opacity .4s}
+  .ly{width:calc(92px*var(--ui))}
+  .ly span{display:block;font-size:calc(12px*var(--ui));opacity:.55;margin-bottom:5px;transition:opacity .4s}
   .ly i{display:block;height:4px;border-radius:2px;background:rgba(255,255,255,.12);overflow:hidden}
   .ly b{display:block;height:100%;width:0;background:linear-gradient(90deg,#8fc6ff,#ffd98a)}
   .ly.on span{opacity:1}
   .ly.done span{opacity:1;color:#ffd98a}
   #back{position:fixed;top:calc(48px + env(safe-area-inset-top));left:12px;display:none;pointer-events:auto;background:rgba(10,14,28,.6);
-    color:#efe4cc;border:1px solid rgba(239,228,204,.3);border-radius:18px;padding:6px 14px;font:inherit;font-size:13px}
-  #msg{position:fixed;left:0;right:0;top:36%;text-align:center;font-size:24px;letter-spacing:.3em;
+    color:#efe4cc;border:1px solid rgba(239,228,204,.3);border-radius:1.4em;padding:.45em 1.1em;font:inherit;font-size:calc(13px*var(--ui))}
+  #msg{position:fixed;left:0;right:0;top:36%;text-align:center;font-size:calc(24px*var(--ui));letter-spacing:.3em;
     pointer-events:none;opacity:0;transition:opacity 1.2s;text-shadow:0 0 18px #ffb860,0 0 4px #000}
   #intro{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
-    background:radial-gradient(ellipse at 50% 60%,rgba(20,30,55,.75),rgba(4,6,12,.96));transition:opacity 1.2s;z-index:5}
-  #intro .box{max-width:420px;padding:28px 26px;text-align:center}
-  #intro h2{font-size:30px;letter-spacing:.35em;margin:0 0 4px;padding-left:.35em}
-  #intro .sub{font-size:13px;opacity:.6;letter-spacing:.2em;margin-bottom:22px}
-  #intro p{font-size:15px;line-height:1.95;text-align:justify;opacity:.9;margin:0 0 14px}
-  #intro .how{font-size:14px;opacity:.75;border-top:1px solid rgba(239,228,204,.2);padding-top:14px}
+    background:radial-gradient(ellipse at 50% 60%,rgba(20,30,55,.75),rgba(4,6,12,.96));transition:opacity 1.2s;z-index:5;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  #intro .box{max-width:min(100%,calc(420px*var(--ui)));padding:28px 22px;text-align:center;margin:auto}
+  #intro h2{font-size:calc(30px*var(--ui));letter-spacing:.35em;margin:0 0 4px;padding-left:.35em}
+  #intro .sub{font-size:calc(13px*var(--ui));opacity:.6;letter-spacing:.2em;margin-bottom:22px}
+  #intro p{font-size:calc(15px*var(--ui));line-height:1.95;text-align:justify;opacity:.9;margin:0 0 14px}
+  #intro .how{font-size:calc(14px*var(--ui));opacity:.75;border-top:1px solid rgba(239,228,204,.2);padding-top:14px}
   #start{margin-top:18px;background:linear-gradient(#c2483d,#8e2b23);color:#fff3dc;border:0;border-radius:26px;
-    padding:12px 34px;font:inherit;font-size:17px;letter-spacing:.3em;box-shadow:0 0 24px rgba(255,140,80,.45)}
+    padding:.7em 2em;font:inherit;font-size:calc(17px*var(--ui));letter-spacing:.3em;box-shadow:0 0 24px rgba(255,140,80,.45)}
   .chap{display:flex;justify-content:center;gap:18px;margin-top:12px}
-  #start2,#start3{display:block;margin:0;white-space:nowrap;background:none;border:0;color:#efe4cc;opacity:.7;font:inherit;font-size:13px;
+  #start2,#start3{display:block;margin:0;white-space:nowrap;background:none;border:0;color:#efe4cc;opacity:.7;font:inherit;font-size:calc(13px*var(--ui));
     letter-spacing:.06em;text-decoration:underline;text-underline-offset:4px}
-  #cap{position:fixed;left:0;right:0;bottom:calc(16% + env(safe-area-inset-bottom));text-align:center;font-size:18px;line-height:1.9;
+  #cap{position:fixed;left:0;right:0;bottom:calc(16% + env(safe-area-inset-bottom));text-align:center;font-size:calc(18px*var(--ui));line-height:1.9;
     letter-spacing:.12em;padding:0 22px;pointer-events:none;opacity:0;transition:opacity 1.1s;text-shadow:0 0 12px #000,0 0 4px #000}
   #skip{position:fixed;top:calc(44px + env(safe-area-inset-top));right:12px;display:none;pointer-events:auto;background:rgba(10,14,28,.5);color:#efe4cc;
-    border:1px solid rgba(239,228,204,.3);border-radius:16px;padding:5px 13px;font:inherit;font-size:12px;z-index:4}
+    border:1px solid rgba(239,228,204,.3);border-radius:1.4em;padding:.4em 1.1em;font:inherit;font-size:calc(12px*var(--ui));z-index:4}
   #fade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity 1.6s;z-index:3}
-  #intro .ver{font-size:11px;opacity:.4;margin-top:16px}
+  #intro .ver{font-size:calc(11px*var(--ui));opacity:.4;margin-top:16px}
   #rite{display:none;pointer-events:auto;margin:0 auto 12px;background:linear-gradient(#e0913a,#a8521e);color:#fff3dc;
-    border:0;border-radius:22px;padding:9px 22px;font:inherit;font-size:15px;letter-spacing:.2em;box-shadow:0 0 20px rgba(255,150,60,.5)}
-  #ending{position:fixed;inset:0;display:none;align-items:center;justify-content:center;opacity:0;transition:opacity 2.5s;z-index:5;
+    border:0;border-radius:1.5em;padding:.6em 1.5em;font:inherit;font-size:calc(15px*var(--ui));letter-spacing:.2em;box-shadow:0 0 20px rgba(255,150,60,.5)}
+  #ending{position:fixed;inset:0;display:none;align-items:center;justify-content:center;opacity:0;transition:opacity 2.5s;z-index:5;overflow-y:auto;
     background:radial-gradient(ellipse at 50% 55%,rgba(40,30,40,.25),rgba(8,10,20,.7))}
-  #ending .box{max-width:400px;padding:26px;text-align:center}
-  #ending h2{font-size:32px;letter-spacing:.5em;padding-left:.5em;margin:0 0 18px;text-shadow:0 0 22px #ffb060}
-  #ending p{font-size:15px;line-height:2;margin:0 0 10px;text-shadow:0 0 8px #000}
-  #again{margin-top:16px;background:rgba(10,14,28,.55);color:#efe4cc;border:1px solid rgba(239,228,204,.4);border-radius:22px;
-    padding:9px 26px;font:inherit;font-size:15px;letter-spacing:.2em}
+  #ending .box{max-width:min(100%,calc(400px*var(--ui)));padding:26px 20px;text-align:center;margin:auto}
+  #ending h2{font-size:calc(32px*var(--ui));letter-spacing:.5em;padding-left:.5em;margin:0 0 18px;text-shadow:0 0 22px #ffb060}
+  #ending p{font-size:calc(15px*var(--ui));line-height:2;margin:0 0 10px;text-shadow:0 0 8px #000}
+  #again{margin-top:16px;background:rgba(10,14,28,.55);color:#efe4cc;border:1px solid rgba(239,228,204,.4);border-radius:1.5em;
+    padding:.6em 1.7em;font:inherit;font-size:calc(15px*var(--ui));letter-spacing:.2em}
+  #zoomtip{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);background:rgba(10,14,28,.75);color:#efe4cc;
+    border:1px solid rgba(239,228,204,.3);border-radius:14px;padding:8px 16px;font-size:15px;letter-spacing:.1em;
+    pointer-events:none;opacity:0;transition:opacity .4s;z-index:9}
 </style>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
@@ -78,6 +82,7 @@
 <div id="cap"></div>
 <button id="skip">跳過序章 ›</button>
 <div id="fade"></div>
+<div id="zoomtip"></div>
 <div id="hint" class="hud">
   <div id="layers">
     <div class="ly" data-i="0"><span>下界・水獄</span><i><b></b></i></div>
@@ -98,6 +103,7 @@
   <div class="sub">農曆六月初八・萬善同歸</div>
   <p>清道光二十五年（1845）農曆六月初七，暴風雨挾帶海潮倒灌，口湖沿海村庄一夜之間被吞沒，數千人罹難，遺骸合葬於萬善同歸塚。</p>
   <p>此後每年六月初七、初八，鄉民立起一座座䔲，誦經、吹靈角，牽引仍在水中載浮載沉的亡魂上岸。</p>
+  <div class="how" style="opacity:.6;font-size:calc(12px*var(--ui));border:0;padding:0;margin-bottom:10px">雙指開合可放大／縮小文字與按鈕</div>
   <div class="how">序章：道光年間的那一夜<br>第二幕：往上滑，放水燈、請水魂<br>第三幕：繞圈牽䔲，再倒䔲、燒䔲</div>
   <button id="start">從序章開始</button>
   <div class="chap"><button id="start2">第二幕・請水魂</button><button id="start3">第三幕・牽䔲</button></div>
@@ -1236,6 +1242,46 @@ function pull(dA) {
   while (layerDone < 3 && progress >= (layerDone + 1) * PER) completeLayer(layerDone);
   updateLayerUI();
 }
+
+/* ---------------- 雙指縮放文字與按鈕 ---------------- */
+let uiScale = 1;
+try { uiScale = parseFloat(localStorage.getItem('qsz-ui')) || 1; } catch (e) {}
+const UI_MIN = .8, UI_MAX = 2.2;
+function applyUI(v, tip) {
+  uiScale = THREE.MathUtils.clamp(v, UI_MIN, UI_MAX);
+  document.documentElement.style.setProperty('--ui', uiScale.toFixed(3));
+  if (tip) {
+    const t = $('#zoomtip'); t.textContent = `文字 ${Math.round(uiScale * 100)}%`; t.style.opacity = 1;
+    clearTimeout(applyUI._t); applyUI._t = setTimeout(() => t.style.opacity = 0, 900);
+  }
+}
+applyUI(uiScale, false);
+let pinch = null;
+const tDist = ts => Math.hypot(ts[0].clientX - ts[1].clientX, ts[0].clientY - ts[1].clientY);
+document.addEventListener('touchstart', e => {
+  if (e.touches.length === 2) {
+    pinch = { d0: tDist(e.touches), s0: uiScale };
+    ptr = null; angVel = 0;           // 取消單指的拖曳／牽引／點選
+    e.preventDefault();
+  }
+}, { passive: false, capture: true });
+document.addEventListener('touchmove', e => {
+  if (pinch && e.touches.length === 2) {
+    e.preventDefault();
+    applyUI(pinch.s0 * tDist(e.touches) / Math.max(pinch.d0, 1), true);
+  }
+}, { passive: false, capture: true });
+document.addEventListener('touchend', e => {
+  if (pinch && e.touches.length < 2) { pinch = null; try { localStorage.setItem('qsz-ui', uiScale.toFixed(3)); } catch (err) {} }
+}, { capture: true });
+// 擋掉 iOS Safari 整頁縮放，改由上面自訂的文字縮放處理
+['gesturestart', 'gesturechange', 'gestureend'].forEach(t => document.addEventListener(t, e => e.preventDefault(), { passive: false }));
+// 桌機：Ctrl＋滾輪（觸控板雙指開合）也能縮放
+addEventListener('wheel', e => {
+  if (!e.ctrlKey) return;
+  e.preventDefault(); applyUI(uiScale * Math.exp(-e.deltaY * .01), true);
+  try { localStorage.setItem('qsz-ui', uiScale.toFixed(3)); } catch (err) {}
+}, { passive: false });
 
 /* ---------------- loop ---------------- */
 const clock = new THREE.Clock();
