@@ -2565,11 +2565,15 @@ function setOffering() {
   OFFER.g.visible = true; OFFER.t = 0; wpTip('擺供品…');
   sayLine('t3');
   const total = .9 + OFFER.items.length * .32 + 1.6;
-  setTimeout(() => {
-    IT.view = 0; IT.busy = false;
-    ['#wIncense', '#wPray', '#wBell', '#wDrum', '#wExit'].forEach(q => $(q).disabled = false);
-    $('#wOffer').textContent = '供品已齊'; wpTip('供品已齊・可上香、祈福');
-  }, total * 1000 + 1500);
+  setTimeout(() => {   // 供品擺完：特寫鏡頭逐一掃過
+    IT.view = 3; IT.scanT = -.5; IT.scanIdx = -1; wpTip('細看供品…');
+    const n = OFFER.items.length;
+    setTimeout(() => {
+      showCap(''); IT.view = 0; IT.busy = false;
+      ['#wIncense', '#wPray', '#wBell', '#wDrum', '#wExit'].forEach(q => $(q).disabled = false);
+      $('#wOffer').textContent = '供品已齊'; wpTip('供品已齊・可上香、祈福');
+    }, (n * SCAN_PER + 1) * 1000);
+  }, total * 1000 + 600);
 }
 $('#wOffer').addEventListener('click', setOffering);
 function updateOffering(dt) {
@@ -2804,9 +2808,18 @@ function updateTemple(dt, t) {
   }
   iGeo.attributes.position.needsUpdate = true; iGeo.attributes.color.needsUpdate = true;
   // 鏡頭：平常站在拜墊後；鐘鼓齊鳴時退後看見鐘與鼓
-  const basePos = IT.view === 1 ? new V3(0, 2.6, 12.5) : IT.view === 2 ? new V3(0, 2.7, 4.6) : IT.base, baseLook = IT.view === 1 ? new V3(0, 2.2, -2) : IT.view === 2 ? new V3(0, .85, -.7) : IT.look;
-  const k = 1 - Math.exp(-dt * 1.5);
-  IT.cp = (IT.cp || basePos.clone()).lerp(basePos, k); IT.cl = (IT.cl || baseLook.clone()).lerp(baseLook, k);
+  let scanPL = null;
+  if (IT.view === 3) {
+    IT.scanT += dt;
+    const pts = OFFER.items.map(it => it.o.getWorldPosition(new V3()));
+    const idx = Math.min(pts.length - 1, Math.max(0, Math.floor(IT.scanT / SCAN_PER)));
+    if (IT.scanT >= 0 && idx !== IT.scanIdx) { IT.scanIdx = idx; showCap(OFFER.items[idx].kind); }
+    scanPL = scanCam(pts, IT.scanT, new V3(.08, .8, 1.3)); scanPL[1].y += .16;
+  }
+  const basePos = scanPL ? scanPL[0] : IT.view === 1 ? new V3(0, 2.6, 12.5) : IT.view === 2 ? new V3(0, 2.7, 4.6) : IT.base, baseLook = IT.view === 1 ? new V3(0, 2.2, -2) : IT.view === 2 ? new V3(0, .85, -.7) : IT.look;
+  const baseLook2 = scanPL ? scanPL[1] : baseLook;
+  const k = 1 - Math.exp(-dt * (scanPL ? 7 : 1.5));
+  IT.cp = (IT.cp || basePos.clone()).lerp(basePos, k); IT.cl = (IT.cl || baseLook2.clone()).lerp(baseLook2, k);
   const dir = IT.cl.clone().sub(IT.cp); const len = dir.length();
   dir.applyAxisAngle(UP, IT.yaw); const right = new V3().crossVectors(dir, UP).normalize(); dir.applyAxisAngle(right, IT.pitch - IT.bow * .35);
   camera.position.copy(IT.cp).add(new V3(0, -IT.bow * .25, 0));
@@ -3389,19 +3402,155 @@ function updateVillagers(dt) {
 // ---- 玩家挑飯擔 ----
 const DISHES = [['白飯', 0xf6f2ea, 'dome'], ['油飯', 0x9a6a3a, 'dome'], ['炒米粉', 0xe0c890, 'flat'], ['滷肉', 0x6a3a1a, 'cubes'], ['全雞', 0xe8b860, 'chicken'],
   ['煎魚', 0xc89848, 'fish'], ['紅龜粿', 0xd8282a, 'turtle'], ['發粿', 0xf08ab0, 'cup'], ['菜頭粿', 0xf2ecd8, 'block'], ['水果', 0xff8a1a, 'fruit']];
+// 特寫鏡頭掃描：沿著祭品一個一個推近
+const SCAN_PER = 1.7;
+function scanCam(pts, t, off) {
+  const n = pts.length, u = Math.max(0, t) / SCAN_PER, i = Math.min(n - 1, Math.floor(u));
+  let f = u - i; f = THREE.MathUtils.smoothstep(f, .55, 1);
+  const a = pts[i], b = pts[Math.min(n - 1, i + 1)];
+  const c = a.clone().lerp(b, i < n - 1 ? f : 0);
+  const sway = Math.sin(t * .8) * .06;
+  return [c.clone().add(off).add(new V3(sway, 0, 0)), c.clone().add(new V3(0, .06, 0))];
+}
+// ---- 精緻祭品 ----
+const DMC = {};
+const dmat = (k, o) => DMC[k] || (DMC[k] = new THREE.MeshStandardMaterial(o));
+function speckTex(base, specks, w = 128) {
+  return canvasTex(w, w, (x, W, H) => {
+    x.fillStyle = base; x.fillRect(0, 0, W, H);
+    specks.forEach(([col, n, a, b]) => { x.fillStyle = col; for (let i = 0; i < n; i++) { x.beginPath(); x.ellipse(Math.random() * W, Math.random() * H, a, b, Math.random() * 3, 0, 7); x.fill(); } });
+  });
+}
+const DTX = {};
+function dtx(k) {
+  if (DTX[k]) return DTX[k];
+  const T = {
+    rice: () => speckTex('#efe9dc', [['rgba(255,255,255,.95)', 700, 2.6, 1.2], ['rgba(170,160,140,.35)', 260, 2.2, 1]]),
+    oily: () => speckTex('#7a4a22', [['#a8703a', 600, 2.6, 1.3], ['#3a2210', 70, 4, 3], ['#e8803a', 40, 3.5, 2], ['#d8b880', 50, 3, 2.2]]),
+    skin: () => canvasTex(128, 128, (x, W, H) => { const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#f2c46a'); g.addColorStop(1, '#c8862e'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+      for (let i = 0; i < 260; i++) { x.fillStyle = `rgba(150,80,20,${Math.random() * .25})`; x.beginPath(); x.arc(Math.random() * W, Math.random() * H, 1 + Math.random() * 2.5, 0, 7); x.fill(); } }),
+    scale: () => canvasTex(128, 64, (x, W, H) => { const g = x.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#8a5a28'); g.addColorStop(.6, '#d8a050'); g.addColorStop(1, '#f2d8a0'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+      x.strokeStyle = 'rgba(90,50,15,.45)'; x.lineWidth = 1.2; for (let r = 0; r < H; r += 7) for (let c = (r / 7 % 2) * 4; c < W; c += 8) { x.beginPath(); x.arc(c, r, 5, 0, Math.PI); x.stroke(); }
+      for (let i = 0; i < 40; i++) { x.fillStyle = 'rgba(60,30,8,.35)'; x.fillRect(Math.random() * W, Math.random() * H, 6, 3); } }),
+    shell: () => canvasTex(128, 128, (x, W, H) => { x.fillStyle = '#d42a26'; x.fillRect(0, 0, W, H); x.strokeStyle = '#f26a5a'; x.lineWidth = 3;
+      const hex = (cx, cy, r) => { x.beginPath(); for (let k = 0; k <= 6; k++) { const a = k / 6 * Math.PI * 2; x.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); } x.stroke(); };
+      hex(64, 64, 18); for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2 + Math.PI / 6; hex(64 + Math.cos(a) * 33, 64 + Math.sin(a) * 33, 15); }
+      x.fillStyle = 'rgba(255,255,255,.12)'; x.beginPath(); x.ellipse(50, 45, 30, 16, -.5, 0, 7); x.fill(); }),
+    pork: () => canvasTex(64, 64, (x, W, H) => { [['#5a2a12', 0, 14], ['#f2e0c0', 14, 8], ['#6a3218', 22, 14], ['#f0dcb8', 36, 6], ['#5a2a12', 42, 22]].forEach(([c, y, h]) => { x.fillStyle = c; x.fillRect(0, y, W, h); });
+      x.fillStyle = 'rgba(40,15,5,.6)'; x.fillRect(0, 0, W, 4); }),
+    radish: () => speckTex('#efe4c6', [['#e88a6a', 26, 3, 2], ['#8a5a30', 30, 2.5, 1.5], ['rgba(255,255,255,.6)', 80, 2, 1]]),
+    leaf: () => canvasTex(128, 128, (x, W, H) => { x.fillStyle = '#2f7a3a'; x.beginPath(); x.arc(64, 64, 62, 0, 7); x.fill(); x.strokeStyle = '#5aa85a'; x.lineWidth = 2;
+      for (let k = 0; k < 18; k++) { const a = k / 18 * Math.PI * 2; x.beginPath(); x.moveTo(64, 64); x.lineTo(64 + Math.cos(a) * 60, 64 + Math.sin(a) * 60); x.stroke(); } }),
+    orange: () => speckTex('#f08a1a', [['rgba(200,90,0,.45)', 500, 1.2, 1.2], ['rgba(255,190,90,.4)', 200, 1.4, 1.4]]),
+    apple: () => canvasTex(64, 64, (x, W, H) => { const g = x.createLinearGradient(0, 0, W, 0); g.addColorStop(0, '#9a0e14'); g.addColorStop(.5, '#d8202a'); g.addColorStop(1, '#a8141a'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+      for (let i = 0; i < 60; i++) { x.fillStyle = 'rgba(255,220,120,.3)'; x.fillRect(Math.random() * W, Math.random() * H, 1, 3); } }),
+  }[k]();
+  T.wrapS = T.wrapT = THREE.RepeatWrapping; return DTX[k] = T;
+}
+const P_PLATE = [[0, 0], [.12, 0], [.13, .006], [.158, .02], [.176, .036], [.17, .04], [.152, .026], [0, .013]].map(([a, b]) => new THREE.Vector2(a, b));
+const P_BOWL = [[0, 0], [.05, 0], [.054, .012], [.088, .032], [.112, .082], [.116, .092], [.108, .088], [.088, .04], [0, .022]].map(([a, b]) => new THREE.Vector2(a, b));
+function porcelain(G, bowl, sx = 1, sz = 1) {
+  const white = dmat('por', { color: 0xf6f4ee, roughness: .18, metalness: .05, side: THREE.DoubleSide }), blue = dmat('blue', { color: 0x2a4a9a, roughness: .25 });
+  const m = new THREE.Mesh(new THREE.LatheGeometry(bowl ? P_BOWL : P_PLATE, 28), white); m.scale.set(sx, 1, sz); G.add(m);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(bowl ? .113 : .17, .005, 5, 36), blue); rim.rotation.x = Math.PI / 2; rim.position.y = bowl ? .074 : .036; rim.scale.set(sx, sz, 1); G.add(rim);
+  if (!bowl) { const r2 = new THREE.Mesh(new THREE.TorusGeometry(.13, .003, 4, 32), blue); r2.rotation.x = Math.PI / 2; r2.position.y = .014; r2.scale.set(sx, sz, 1); G.add(r2); }
+  return bowl ? .022 : .013;
+}
+function piece(G, geo, mat, x, y, z, sc, rot) { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); if (sc) m.scale.set(...sc); if (rot) m.rotation.set(...rot); G.add(m); return m; }
 function dishMesh(color, kind) {
-  const G = new THREE.Group(), M = new THREE.MeshStandardMaterial({ color, roughness: .6 });
-  const plate = new THREE.Mesh(new THREE.CylinderGeometry(.15, .12, .025, 18), new THREE.MeshStandardMaterial({ color: 0xf4f2ec, roughness: .3 })); plate.position.y = .012; G.add(plate);
-  const add = (geo, x = 0, y = 0, z = 0, sc) => { const m = new THREE.Mesh(geo, M); m.position.set(x, y, z); if (sc) m.scale.set(...sc); G.add(m); return m; };
-  if (kind === 'dome') add(new THREE.SphereGeometry(.1, 14, 10), 0, .04, 0, [1, .7, 1]);
-  if (kind === 'flat') add(new THREE.CylinderGeometry(.11, .12, .045, 16), 0, .045);
-  if (kind === 'cubes') for (let k = 0; k < 6; k++) add(new THREE.BoxGeometry(.05, .04, .05), Math.cos(k) * .06, .045 + (k % 2) * .03, Math.sin(k) * .06);
-  if (kind === 'chicken') { add(new THREE.SphereGeometry(.1, 14, 10), 0, .08, 0, [1.3, .75, 1]); add(new THREE.SphereGeometry(.035, 8, 6), .12, .12, 0); }
-  if (kind === 'fish') { add(new THREE.SphereGeometry(.07, 12, 8), 0, .05, 0, [2, .55, .8]); add(new THREE.ConeGeometry(.05, .07, 4), -.15, .05, 0, [1, 1, .3]).rotation.z = Math.PI / 2; }
-  if (kind === 'turtle') { add(new THREE.CylinderGeometry(.1, .1, .03, 16), 0, .04, 0, [1.2, 1, .9]); }
-  if (kind === 'cup') for (let k = 0; k < 3; k++) { add(new THREE.CylinderGeometry(.05, .035, .06, 10), Math.cos(k * 2.1) * .06, .05, Math.sin(k * 2.1) * .06); add(new THREE.SphereGeometry(.045, 8, 6), Math.cos(k * 2.1) * .06, .09, Math.sin(k * 2.1) * .06); }
-  if (kind === 'block') add(new THREE.BoxGeometry(.18, .05, .11), 0, .05);
-  if (kind === 'fruit') [[0, 0], [.06, .04], [-.06, .04]].forEach(([x, z], k) => add(new THREE.SphereGeometry(.045, 10, 8), x, .06 + (k ? 0 : .03), z));
+  const G = new THREE.Group(), r = Math.random;
+  if (kind === 'dome' && color === 0xf6f2ea) {   // 白飯：碗＋圓滿飯堆＋飯春
+    const b = porcelain(G, true);
+    piece(G, new THREE.SphereGeometry(.1, 24, 14, 0, Math.PI * 2, 0, Math.PI / 2), dmat('rice', { map: dtx('rice'), roughness: .55 }), 0, b + .05, 0, [1.05, .9, 1.05]);
+    piece(G, new THREE.ConeGeometry(.018, .06, 8), dmat('red', { color: 0xd8202a }), 0, b + .17, 0);
+    for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2; piece(G, new THREE.SphereGeometry(.014, 6, 4), dmat('red', { color: 0xd8202a }), Math.cos(a) * .02, b + .2, Math.sin(a) * .02, [1, .4, 1]); }
+    piece(G, new THREE.SphereGeometry(.008, 6, 4), dmat('gold', { color: 0xf2c84a, metalness: .5, roughness: .3 }), 0, b + .205, 0);
+  } else if (kind === 'dome') {   // 油飯：碗＋油飯＋香菇、蝦米、花生
+    const b = porcelain(G, true);
+    piece(G, new THREE.SphereGeometry(.1, 24, 14, 0, Math.PI * 2, 0, Math.PI / 2), dmat('oily', { map: dtx('oily'), roughness: .35 }), 0, b + .05, 0, [1.05, .85, 1.05]);
+    for (let k = 0; k < 5; k++) { const a = k * 1.3; piece(G, new THREE.CylinderGeometry(.025, .02, .01, 10), dmat('shroom', { color: 0x2a1a10, roughness: .4 }), Math.cos(a) * .05, b + .12 + (k % 2) * .01, Math.sin(a) * .05, null, [r() * .6, 0, r() * .6]); }
+    for (let k = 0; k < 6; k++) { const a = k * 1.05 + .4; piece(G, new THREE.TorusGeometry(.012, .006, 5, 8, Math.PI * 1.4), dmat('shrimp', { color: 0xe8703a, roughness: .5 }), Math.cos(a) * .065, b + .11, Math.sin(a) * .065, null, [r() * 3, r() * 3, 0]); }
+    for (let k = 0; k < 4; k++) piece(G, new THREE.SphereGeometry(.009, 6, 4), dmat('nut', { color: 0xd8b070 }), (r() - .5) * .1, b + .14, (r() - .5) * .1, [1, .7, 1.3]);
+    piece(G, new THREE.CylinderGeometry(.006, .006, .03, 5), dmat('green', { color: 0x3a9a3a }), .02, b + .15, .01, null, [0, 0, 1.2]);
+  } else if (kind === 'flat') {   // 炒米粉：盤＋米粉絲＋肉絲、紅蘿蔔、蔥
+    const b = porcelain(G, false), strands = [];
+    for (let k = 0; k < 46; k++) {
+      const pts = [], a0 = r() * 7, rad = .02 + r() * .1;
+      for (let i = 0; i < 6; i++) { const a = a0 + i * .5; const rr = Math.max(.01, rad + (r() - .5) * .03); pts.push(new V3(Math.cos(a) * rr, b + .012 + (1 - rr / .13) * .05 + r() * .02, Math.sin(a) * rr)); }
+      strands.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 10, .0035, 3));
+    }
+    piece(G, mergeGeometries(strands), dmat('noodle', { color: 0xe6cf98, roughness: .4 }), 0, 0, 0);
+    for (let k = 0; k < 8; k++) piece(G, new THREE.BoxGeometry(.035, .006, .008), dmat('carrot', { color: 0xf0782a }), (r() - .5) * .16, b + .06 + r() * .02, (r() - .5) * .16, null, [0, r() * 3, 0]);
+    for (let k = 0; k < 8; k++) piece(G, new THREE.BoxGeometry(.04, .008, .01), dmat('meat', { color: 0x7a4a2a }), (r() - .5) * .16, b + .06 + r() * .02, (r() - .5) * .16, null, [0, r() * 3, 0]);
+    for (let k = 0; k < 10; k++) piece(G, new THREE.CylinderGeometry(.004, .004, .016, 5), dmat('green', { color: 0x3a9a3a }), (r() - .5) * .14, b + .075, (r() - .5) * .14, null, [Math.PI / 2, 0, r() * 3]);
+    piece(G, new THREE.ConeGeometry(.012, .02, 6), dmat('cil', { color: 0x5ab84a }), 0, b + .085, 0);
+  } else if (kind === 'cubes') {   // 滷肉：五花肉塊＋滷蛋＋醬汁
+    const b = porcelain(G, false);
+    piece(G, new THREE.CircleGeometry(.13, 24), dmat('sauce', { color: 0x3a1a08, roughness: .12, metalness: .1 }), 0, b + .003, 0, null, [-Math.PI / 2, 0, 0]);
+    const pm = dmat('pork', { map: dtx('pork'), roughness: .3 });
+    [[-.05, -.04], [.0, -.05], [.05, -.03], [-.03, .02], [.03, .02], [0, .0, .045]].forEach(([x, z, y = 0], k) => {
+      const g = new THREE.BoxGeometry(.05, .048, .05, 2, 2, 2); piece(G, g, pm, x, b + .03 + y, z, null, [0, r() * .8, (r() - .5) * .2]); });
+    [[-.075, .065], [.075, .06]].forEach(([x, z]) => {
+      piece(G, new THREE.SphereGeometry(.03, 14, 10, 0, Math.PI * 2, 0, Math.PI / 2), dmat('egg', { color: 0x8a5220, roughness: .25 }), x, b + .005, z, [1, 1.3, 1.3], [0, 0, 0]);
+      piece(G, new THREE.CircleGeometry(.03, 16), dmat('eggw', { color: 0xc89048 }), x, b + .045, z, [1, 1.3, 1], [-Math.PI / 2, 0, 0]);
+      piece(G, new THREE.CircleGeometry(.014, 12), dmat('yolk', { color: 0xe8a830 }), x, b + .046, z, null, [-Math.PI / 2, 0, 0]); });
+    for (let k = 0; k < 4; k++) piece(G, new THREE.CylinderGeometry(.004, .004, .02, 5), dmat('green', { color: 0x3a9a3a }), (r() - .5) * .1, b + .07, (r() - .5) * .08, null, [Math.PI / 2, 0, r() * 3]);
+  } else if (kind === 'chicken') {   // 全雞：雞身、雞腿、雞翅、昂首雞頭雞冠
+    const b = porcelain(G, false, 1.25, 1.1), sk = dmat('skin', { map: dtx('skin'), roughness: .28, metalness: .05 });
+    piece(G, new THREE.SphereGeometry(.1, 24, 16), sk, 0, b + .07, 0, [1.35, .78, 1]);
+    piece(G, new THREE.SphereGeometry(.06, 16, 10), sk, .04, b + .1, 0, [1.4, .6, .9]);
+    [-1, 1].forEach(sz => {
+      piece(G, new THREE.SphereGeometry(.045, 14, 10), sk, -.06, b + .05, sz * .07, [1.4, .9, .9], [0, sz * .4, 0]);
+      piece(G, new THREE.CylinderGeometry(.009, .012, .07, 8), dmat('bone', { color: 0xe8d8b0 }), -.13, b + .04, sz * .085, null, [0, 0, 1.3]);
+      piece(G, new THREE.SphereGeometry(.05, 14, 10), sk, .02, b + .09, sz * .085, [1.3, .55, .45], [sz * .3, 0, -.2]);
+    });
+    const neck = new THREE.TubeGeometry(new THREE.CatmullRomCurve3([new V3(.1, b + .1, 0), new V3(.135, b + .14, 0), new V3(.145, b + .175, 0)]), 10, .02, 8);
+    piece(G, neck, sk, 0, 0, 0);
+    piece(G, new THREE.SphereGeometry(.026, 14, 10), sk, .15, b + .19, 0, [1.2, 1, .9]);
+    piece(G, new THREE.ConeGeometry(.009, .03, 8), dmat('beak', { color: 0xe8b030 }), .18, b + .187, 0, null, [0, 0, -Math.PI / 2]);
+    for (let k = 0; k < 4; k++) piece(G, new THREE.SphereGeometry(.01, 8, 6), dmat('comb', { color: 0xc8141a, roughness: .5 }), .135 + k * .01, b + .217 - Math.abs(k - 1.5) * .004, 0, [1, 1.3, .5]);
+    for (let k = 0; k < 6; k++) piece(G, new THREE.SphereGeometry(.018, 8, 6), dmat('parsley', { color: 0x3a8a2a, roughness: .7 }), -.16 + k * .06, b + .012, .12 + (k % 2) * .01, [1, .5, 1]);
+  } else if (kind === 'fish') {   // 煎魚：魚身鱗片、魚尾、背鰭、魚眼、蔥絲辣椒
+    const b = porcelain(G, false, 1.35, .95), fm = dmat('fishs', { map: dtx('scale'), roughness: .3, metalness: .08 });
+    piece(G, new THREE.SphereGeometry(.07, 24, 14), fm, 0, b + .03, 0, [2.2, .5, .78]);
+    const tail = new THREE.Shape(); tail.moveTo(0, 0); tail.quadraticCurveTo(.05, .06, .09, .07); tail.quadraticCurveTo(.06, 0, .09, -.07); tail.quadraticCurveTo(.05, -.06, 0, 0);
+    piece(G, new THREE.ExtrudeGeometry(tail, { depth: .006, bevelEnabled: false }), dmat('fin', { color: 0xa8682a, roughness: .4, side: THREE.DoubleSide }), -.15, b + .03, 0, null, [-Math.PI / 2, 0, Math.PI]);
+    const fin = new THREE.Shape(); fin.moveTo(0, 0); fin.quadraticCurveTo(.05, .03, .1, 0); fin.lineTo(0, 0);
+    piece(G, new THREE.ExtrudeGeometry(fin, { depth: .004, bevelEnabled: false }), dmat('fin', { color: 0xa8682a, roughness: .4, side: THREE.DoubleSide }), -.05, b + .06, .0, null, [0, 0, 0]);
+    piece(G, new THREE.SphereGeometry(.012, 10, 8), dmat('eyew', { color: 0xf2f0e8, roughness: .2 }), .12, b + .045, .03);
+    piece(G, new THREE.SphereGeometry(.006, 8, 6), dmat('eyeb', { color: 0x111111 }), .125, b + .047, .038);
+    for (let k = 0; k < 4; k++) piece(G, new THREE.BoxGeometry(.004, .004, .025), dmat('fry', { color: 0x5a3010 }), -.04 + k * .03, b + .066, 0, null, [0, .5, 0]);
+    for (let k = 0; k < 10; k++) piece(G, new THREE.CylinderGeometry(.003, .003, .06, 4), dmat('scal', { color: 0xe8f0c0 }), (r() - .5) * .14, b + .07, (r() - .5) * .04, null, [Math.PI / 2, 0, r() * 3]);
+    for (let k = 0; k < 4; k++) piece(G, new THREE.TorusGeometry(.007, .003, 4, 8), dmat('chili', { color: 0xe0201a }), (r() - .5) * .12, b + .072, (r() - .5) * .04, null, [Math.PI / 2, 0, 0]);
+  } else if (kind === 'turtle') {   // 紅龜粿：香蕉葉上三個龜甲紋紅粿
+    piece(G, new THREE.CircleGeometry(.17, 28), dmat('leaf', { map: dtx('leaf'), roughness: .5, side: THREE.DoubleSide }), 0, .005, 0, null, [-Math.PI / 2, 0, 0]);
+    const sh = dmat('shell', { map: dtx('shell'), roughness: .35 }), body = dmat('red', { color: 0xd8202a });
+    [[0, -.05], [-.07, .05], [.07, .05]].forEach(([x, z]) => {
+      piece(G, new THREE.SphereGeometry(.055, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2), sh, x, .008, z, [1, .45, 1.2]);
+      piece(G, new THREE.SphereGeometry(.014, 8, 6), body, x, .015, z + .07);
+      [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([a, c]) => piece(G, new THREE.SphereGeometry(.011, 6, 4), body, x + a * .045, .01, z + c * .045, [1, .6, 1]));
+    });
+  } else if (kind === 'cup') {   // 發粿：三個開花發粿
+    const b = porcelain(G, false);
+    [[0, -.05, 0xf2a0c0], [-.06, .04, 0xf8f0e4], [.06, .04, 0xf08ab0]].forEach(([x, z, c]) => {
+      const m = dmat('fa' + c, { color: c, roughness: .55 });
+      piece(G, new THREE.CylinderGeometry(.045, .035, .045, 16), m, x, b + .023, z);
+      for (let k = 0; k < 4; k++) { const a = k / 4 * Math.PI * 2 + .3; piece(G, new THREE.SphereGeometry(.03, 12, 8), m, x + Math.cos(a) * .02, b + .058, z + Math.sin(a) * .02, [1, .9, 1], [Math.cos(a) * .4, 0, -Math.sin(a) * .4]); }
+      piece(G, new THREE.CylinderGeometry(.046, .046, .003, 16), dmat('paper', { color: 0xf6f0e6 }), x, b + .002, z);
+    });
+  } else if (kind === 'block') {   // 菜頭粿：煎過的片
+    const b = porcelain(G, false), rm = dmat('radish', { map: dtx('radish'), roughness: .5 }), crust = dmat('crust', { color: 0xc8904a, roughness: .5 });
+    for (let k = 0; k < 5; k++) piece(G, new THREE.BoxGeometry(.11, .024, .065), [crust, crust, rm, crust, rm, rm], -.06 + k * .03, b + .015 + k * .006, (k - 2) * .012, null, [.12, (k - 2) * .15, 0]);
+  } else {   // 水果：蘋果、柳丁、香蕉、葡萄
+    const b = porcelain(G, false);
+    const ap = piece(G, new THREE.SphereGeometry(.045, 18, 14), dmat('apple', { map: dtx('apple'), roughness: .25 }), -.06, b + .045, -.03, [1, .9, 1]);
+    piece(G, new THREE.CylinderGeometry(.003, .003, .02, 5), dmat('stem', { color: 0x5a3a1a }), -.06, b + .09, -.03);
+    piece(G, new THREE.SphereGeometry(.012, 8, 6), dmat('lf', { color: 0x3a8a2a }), -.05, b + .095, -.03, [1.6, .3, .8]);
+    [[.05, -.04], [.02, .05]].forEach(([x, z]) => { piece(G, new THREE.SphereGeometry(.042, 18, 14), dmat('orange', { map: dtx('orange'), roughness: .65 }), x, b + .042, z);
+      piece(G, new THREE.SphereGeometry(.006, 6, 4), dmat('stem', { color: 0x5a3a1a }), x, b + .084, z); });
+    for (let k = 0; k < 3; k++) piece(G, new THREE.TorusGeometry(.07, .013, 8, 18, Math.PI * .75), dmat('banana', { color: 0xf2d23a, roughness: .45 }), -.03, b + .03 + k * .012, .06, null, [Math.PI / 2 - .2, 0, -.8 + k * .18]);
+    for (let k = 0; k < 9; k++) piece(G, new THREE.SphereGeometry(.014, 10, 8), dmat('grape', { color: 0x4a1a5a, roughness: .2 }), .085 + (k % 3 - 1) * .018, b + .018 + Math.floor(k / 3) * .012, .02 + (Math.floor(k / 3) - 1) * .016);
+  }
   return G;
 }
 const RICE = { phase: '', yaw: 0, chosen: [], player: null, route: null, seg: 0, bow: 0, bowT: -1, cp: null, cl: null, placed: [] };
@@ -3418,7 +3567,7 @@ function refillBaskets() {
   RICE.player.baskets.forEach(b => b.content.clear());
   RICE.chosen.forEach((k, i) => {
     const b = RICE.player.baskets[i % 2], j = Math.floor(i / 2), [, c, kind] = DISHES[k];
-    const m = dishMesh(c, kind); m.scale.setScalar(.85); m.position.set([0, -.05, .05][j], .1 + j * .08, [0, .05, -.05][j]); b.content.add(m);
+    const m = dishMesh(c, kind); m.scale.setScalar(.75); m.position.set([0, -.05, .05][j], .1 + j * .08, [0, .05, -.05][j]); b.content.add(m);
   });
 }
 $('#rpBody').addEventListener('click', e => {
@@ -3446,7 +3595,7 @@ function riceGo() {
   if (RICE.phase === 'pick') {
     if (!RICE.chosen.length) return;
     RICE.phase = 'walk'; RICE.player.baskets.forEach(b => b.cover.visible = true);
-    RICE.route = [new V3(TENT.x, 0, TENT.z0 + .4), new V3(TENT.x - .3, 0, -12.2), new V3(TENT.x - .85, 0, -13.3)]; RICE.seg = 0;
+    RICE.route = [new V3(TENT.x, 0, TENT.z0 + .4), new V3(TENT.x - .3, 0, -12.2), new V3(TENT.x - 1.95, 0, -13.5)]; RICE.seg = 0;
     $('#rpBody').style.display = 'none'; $('#rpGo').style.display = 'none'; riceIns('挑著飯擔走向帳棚…（拖曳可轉動視角）');
     capsCancel(); narrate('r2');
   } else if (RICE.phase === 'arrive') {
@@ -3490,12 +3639,21 @@ function updateRice(dt, t) {
         RICE.chosen.forEach((k, i) => { const [, c, kind] = DISHES[k]; const m = dishMesh(c, kind); m.position.copy(altarSpots[i]); scene.add(m); RICE.placed.push(m);
           for (let n = 0; n < 4; n++) emit(m.position.x, .95, m.position.z, (Math.random() - .5) * .3, .4 + Math.random() * .4, (Math.random() - .5) * .3, 1 + Math.random(), .8, .55, .2); });
         if (ac) bell(988);
-        riceIns('菜飯已擺上供桌'); $('#rpGo').textContent = '上香祭拜'; $('#rpGo').style.display = 'inline-block'; $('#rpGo').disabled = false;
-        narrate('r3');
+        RICE.phase = 'scan'; RICE.scanT = -.6; RICE.scanIdx = -1; riceIns('祭品一一擺上供桌…');
       }
     } else { v.g.position.addScaledVector(d.normalize(), Math.min(len, 1.3 * dt)); v.g.rotation.y = Math.atan2(d.x, d.z); moving = true; }
   }
   animWalk(v, dt, moving);
+  if (RICE.phase === 'scan') {
+    RICE.scanT += dt;
+    const n = RICE.placed.length, idx = Math.min(n - 1, Math.max(0, Math.floor(RICE.scanT / SCAN_PER)));
+    if (RICE.scanT >= 0 && idx !== RICE.scanIdx) { RICE.scanIdx = idx; showCap(DISHES[RICE.chosen[idx]][0]); if (ac) bell(1046 + idx * 40); }
+    if (RICE.scanT > n * SCAN_PER + .4) {
+      RICE.phase = 'arrive'; showCap('');
+      riceIns('菜飯已擺上供桌'); $('#rpGo').textContent = '上香祭拜'; $('#rpGo').style.display = 'inline-block'; $('#rpGo').disabled = false;
+      narrate('r3');
+    }
+  }
   // 上香三拜
   if (RICE.bowT >= 0) { RICE.bowT += dt; RICE.bow = RICE.bowT < 4 ? Math.max(0, Math.sin(RICE.bowT / 4 * Math.PI * 3)) : 0; if (RICE.bowT > 4.2) RICE.bowT = -1; }
   if (incenseR[0].tip.visible) incenseR.forEach(o => { if (Math.random() < dt * 6) emit(o.tip.position.x, o.tip.position.y, o.tip.position.z, (Math.random() - .5) * .05, .3, (Math.random() - .5) * .05, 2.5, .3, .3, .3); });
@@ -3504,9 +3662,10 @@ function updateRice(dt, t) {
   let pos, look;
   if (RICE.phase === 'pick') { pos = p.clone().add(new V3(1.7, 2.1, 2.6)); look = p.clone().add(new V3(0, .6, 0)); }
   else if (RICE.phase === 'walk') { pos = p.clone().add(new V3(2.2, 2.5, 4.4)); look = p.clone().add(new V3(0, 1.1, -2.2)); }
+  else if (RICE.phase === 'scan') { [pos, look] = scanCam(RICE.placed.map(o => o.position), RICE.scanT, new V3(.04, .4, .66)); }
   else { pos = new V3(TENT.x + 1.3, 2.2, -10.9); look = new V3(TENT.x + .25, .95, -14.6); }
   RICE.cp = RICE.cp || pos.clone(); RICE.cl = RICE.cl || look.clone();
-  const k = 1 - Math.exp(-dt * 3);
+  const k = 1 - Math.exp(-dt * (RICE.phase === 'scan' ? 8 : 3));
   RICE.cp.lerp(pos, k); RICE.cl.lerp(look, k);
   const off = RICE.cp.clone().sub(RICE.cl).applyAxisAngle(UP, RICE.yaw);
   camera.position.copy(RICE.cl).add(off); camera.position.y -= RICE.bow * .3;
