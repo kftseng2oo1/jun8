@@ -2364,6 +2364,8 @@ let camBtnShown = false;
 function syncCamBtn() { const v = camBtnVisible(); if (v !== camBtnShown) { camBtnShown = v; $('#cambtn').style.display = v ? 'inline-block' : 'none'; } }
 
 /* ================= 萬善祠廟內：上香、祈福、鐘鼓齊鳴 ================= */
+// 三拜：0→1 之間鞠躬三次，每次低下再抬起
+function bowCurve(u) { if (u <= 0 || u >= 1) return 0; return Math.pow(Math.sin(Math.PI * ((u * 3) % 1)), 1.4); }
 const iScene = new THREE.Scene();
 iScene.background = new THREE.Color(0x120806);
 iScene.fog = new THREE.Fog(0x120806, 14, 30);
@@ -2788,7 +2790,7 @@ function updateTemple(dt, t) {
   if (IT.incenseT !== undefined && IT.incenseT < 4.2) {
     IT.incenseT += dt;
     incense.forEach(o => o.st.scale.y = Math.min(1, IT.incenseT / .6));
-    IT.bow = IT.incenseT > .8 && IT.incenseT < 4 ? Math.max(0, Math.sin((IT.incenseT - .8) / 3.2 * Math.PI * 3)) : 0;
+    IT.bow = IT.incenseT > .8 && IT.incenseT < 4 ? bowCurve((IT.incenseT - .8) / 3.2) : 0;
   } else IT.bow *= .9;
   // 香煙與金光
   if (incense[0].tip.visible) {
@@ -3655,7 +3657,7 @@ function updateRice(dt, t) {
     }
   }
   // 上香三拜
-  if (RICE.bowT >= 0) { RICE.bowT += dt; RICE.bow = RICE.bowT < 4 ? Math.max(0, Math.sin(RICE.bowT / 4 * Math.PI * 3)) : 0; if (RICE.bowT > 4.2) RICE.bowT = -1; }
+  if (RICE.bowT >= 0) { RICE.bowT += dt; RICE.bow = RICE.bowT < 4 ? bowCurve(RICE.bowT / 4) : 0; if (RICE.bowT > 4.2) RICE.bowT = -1; }
   if (incenseR[0].tip.visible) incenseR.forEach(o => { if (Math.random() < dt * 6) emit(o.tip.position.x, o.tip.position.y, o.tip.position.z, (Math.random() - .5) * .05, .3, (Math.random() - .5) * .05, 2.5, .3, .3, .3); });
   // 鏡頭
   const p = v.g.position;
