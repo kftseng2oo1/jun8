@@ -2204,6 +2204,11 @@ function drawLabel(cv, text) {
   chars.forEach((ch, k) => x.fillText(ch, W / 2, 32 + step * (k + .5)));
 }
 function labelVis(i, v) { if (labels[i]) labels[i].holder.visible = v; if (customZ[i]) customZ[i].holder.visible = v; }
+function placeLabelMesh(i, mesh) {   // 上層（天堂層）正面
+  let cz = null; try { cz = customZ[i]; } catch (e) {}
+  const th = -slots[i].ry, r = cz && cz.inner.userData.trad ? .412 : .298;
+  mesh.position.set(Math.sin(th) * r, 1.55, Math.cos(th) * r); mesh.rotation.y = th;
+}
 async function attachLabel(i, text) {
   await fontReady(text);
   if (labels[i]) { labels[i].holder.removeFromParent(); labels[i].mesh.removeFromParent(); labels[i].mesh.material.map.dispose(); labels[i].mesh.material.dispose(); }
@@ -2211,8 +2216,7 @@ async function attachLabel(i, text) {
   const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
   const mesh = new THREE.Mesh(LABEL_GEO, new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(.9, .9, .9) }));
   // 在䔲自身座標系裡貼在底層正面（世界座標朝 +z，面向進場鏡頭）
-  const th = -slots[i].ry, r = .298;   // 上層（天堂層）正面
-  mesh.position.set(Math.sin(th) * r, 1.55, Math.cos(th) * r); mesh.rotation.y = th;
+  placeLabelMesh(i, mesh);
   const holder = new THREE.Group(); holder.matrixAutoUpdate = false; holder.matrix.copy(slotMatrix(i));
   holder.add(mesh); scene.add(holder);
   labels[i] = { holder, mesh, text };
@@ -2912,8 +2916,9 @@ const SKIRT_TEX = canvasTex(256, 64, (x, W, H) => {
   x.fillStyle = '#ffd96a'; x.fillRect(0, 0, W, 5);
 });
 const DEFAULT_DESIGN = () => ({ tiers: [{ c: '朱紅', p: '窗格' }, { c: '金黃', p: '蓮花' }, { c: '翠綠', p: '雲紋' }], roof: '紅', skirt: true, flag: true });
-// 依設計建出一座䔲（座標同田裡的䔲：底在 y=0）
-function buildZhuang(d, opts = {}) {
+// 依設計建出一座䔲（座標同田裡的䔲：底在 y=0）；d.style === 'trad' 為傳統式
+function buildZhuang(d, opts = {}) { return d && d.style === 'trad' ? buildTradZhuang(d) : buildPaintZhuang(d, opts); }
+function buildPaintZhuang(d, opts = {}) {
   const g = new THREE.Group(), mats = [], layers = [];
   LAYERS.forEach((L, k) => {
     const m = new THREE.Mesh(layerGeo(L), new THREE.MeshStandardMaterial({ map: tierTex(TIER_COLORS[d.tiers[k].c], d.tiers[k].p), roughness: .85,
@@ -2938,6 +2943,132 @@ function buildZhuang(d, opts = {}) {
   return g;
 }
 
+/* ---- 傳統式水䔲：竹篾直筒三層、八根竹竿出頭掛三角旗、層間鋸齒彩紙、紙人、「萬善同歸」紙條 ---- */
+const TRAD_LAYERS = [[.4, .6, .32], [.4, .58, .93], [.4, .56, 1.52]];   // [半徑, 高, 中心y]，上下對齊不收分
+const TRAD_TOP = 1.8, TRAD_POLE = 2.32;
+const tradLayerGeo = ([r, h, y]) => { const g = new THREE.CylinderGeometry(r, r, h, 20, 1, true); g.translate(0, y, 0); return g; };
+const TRAD_PAPERS = {
+  '粉紅花紙': '#ec9cc0', '桃紅': '#dd5a8e', '素白': '#f5f1e6', '紫紋': '#c3b0e6', '蝶紋': '#f4e6c6', '橘紅': '#ee5a36',
+};
+const FRINGE_COLORS = { '紫': '#8a4ad0', '藍': '#2f95e0', '綠': '#22994a', '黃': '#f2c230', '紅': '#e0382a', '白': '#f4f1e8' };
+const FRINGE_SETS = { '綠藍紫': ['綠', '藍', '紫'], '紫黃藍': ['紫', '黃', '藍'], '紅黃綠': ['紅', '黃', '綠'], '素白': ['白', '白', '白'] };
+const TRAD_DEFAULT = () => ({ style: 'trad', tiers: [{ c: '粉紅花紙' }, { c: '桃紅' }, { c: '蝶紋' }], fringe: '綠藍紫', flag: true, figure: true, title: true });
+function butterfly(x, cx, cy, s, col) {   // 小蝴蝶花樣
+  x.fillStyle = col;
+  [[-1, -1], [1, -1]].forEach(([sx]) => { x.beginPath(); x.ellipse(cx + sx * s * .55, cy - s * .2, s * .55, s * .42, sx * .5, 0, 7); x.fill(); x.beginPath(); x.ellipse(cx + sx * s * .4, cy + s * .35, s * .35, s * .28, -sx * .4, 0, 7); x.fill(); });
+  x.fillStyle = 'rgba(60,30,40,.6)'; x.fillRect(cx - .8, cy - s * .5, 1.6, s);
+}
+const tradTexCache = new Map();
+function tradPaperTex(name) {
+  if (tradTexCache.has(name)) return tradTexCache.get(name);
+  const base = TRAD_PAPERS[name] || '#f5f1e6', rnd = seeded(name.charCodeAt(0) * 31 + name.length);
+  const t = canvasTex(256, 256, (x, W, H) => {
+    x.fillStyle = base; x.fillRect(0, 0, W, H);
+    if (name === '粉紅花紙') for (let i = 0; i < 26; i++) {   // 白色小花
+      const cx = rnd() * W, cy = rnd() * H, r = 5 + rnd() * 6;
+      x.fillStyle = 'rgba(255,255,255,.85)'; for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2; x.beginPath(); x.ellipse(cx + Math.cos(a) * r, cy + Math.sin(a) * r, r * .7, r * .45, a, 0, 7); x.fill(); }
+      x.fillStyle = '#f2c14e'; x.beginPath(); x.arc(cx, cy, r * .35, 0, 7); x.fill();
+    } else if (name === '紫紋') {
+      x.strokeStyle = 'rgba(110,70,190,.75)'; x.lineCap = 'round';
+      for (let i = 0; i < 34; i++) { x.lineWidth = 2 + rnd() * 6; const sx = rnd() * W * 1.4 - W * .2, sy = rnd() * H; x.beginPath(); x.moveTo(sx, sy); x.lineTo(sx + 30 + rnd() * 40, sy - 40 - rnd() * 40); x.stroke(); }
+    } else if (name === '蝶紋') {
+      for (let i = 0; i < 22; i++) butterfly(x, rnd() * W, rnd() * H, 6 + rnd() * 5, rnd() < .5 ? 'rgba(220,120,160,.8)' : 'rgba(150,120,200,.7)');
+    } else if (name === '桃紅') {
+      x.fillStyle = 'rgba(255,255,255,.12)'; for (let i = 0; i < W; i += 9) x.fillRect(i, 0, 3, H);
+    }
+    x.strokeStyle = 'rgba(255,255,255,.25)'; x.lineWidth = 1;   // 糊紙接縫與皺褶
+    for (let i = 0; i < 10; i++) { x.beginPath(); const y = rnd() * H; x.moveTo(0, y); x.bezierCurveTo(W / 3, y + (rnd() - .5) * 20, W * 2 / 3, y + (rnd() - .5) * 20, W, y + (rnd() - .5) * 10); x.stroke(); }
+    x.fillStyle = 'rgba(0,0,0,.08)'; x.fillRect(W - 6, 0, 6, H);
+  });
+  t.wrapS = THREE.RepeatWrapping; t.repeat.set(2, 1);
+  tradTexCache.set(name, t); return t;
+}
+const fringeTexCache = new Map();
+function fringeTex(col) {   // 鋸齒彩紙：上緣一條，下面剪成一片片長短不一的紙穗
+  if (fringeTexCache.has(col)) return fringeTexCache.get(col);
+  const t = canvasTex(256, 64, (x, W, H) => {
+    x.fillStyle = col; x.fillRect(0, 0, W, 14);
+    for (let i = 0; i < 12; i++) {
+      const w = W / 12, px = i * w, len = 34 + (i * 37 % 5) * 4;
+      x.beginPath(); x.moveTo(px + 1, 12); x.lineTo(px + w - 1, 12); x.lineTo(px + w - 1, len); x.lineTo(px + w * .62, len - 8); x.lineTo(px + w * .38, len); x.lineTo(px + 1, len - 6); x.closePath(); x.fill();
+    }
+    x.fillStyle = 'rgba(255,255,255,.18)'; x.fillRect(0, 0, W, 3);
+  });
+  t.wrapS = THREE.RepeatWrapping; t.repeat.set(3, 1);
+  fringeTexCache.set(col, t); return t;
+}
+const TRAD_FLAG_TEX = canvasTex(128, 112, (x, W, H) => {   // 米黃蝶紋三角旗
+  x.beginPath(); x.moveTo(0, 0); x.lineTo(W, H * .5); x.lineTo(0, H); x.closePath(); x.save(); x.clip();
+  x.fillStyle = '#f6ecd0'; x.fillRect(0, 0, W, H);
+  const r = seeded(7); for (let i = 0; i < 9; i++) butterfly(x, r() * W * .7 + 6, r() * H, 6 + r() * 4, r() < .5 ? 'rgba(225,120,165,.85)' : 'rgba(160,120,205,.8)');
+  x.restore();
+});
+const TRAD_FIG_TEX = canvasTex(96, 288, (x, W, H) => {   // 紙人：白臉黑髮、長袍，下襬剪成鋸齒
+  x.fillStyle = '#f4f1ea';
+  x.beginPath(); x.moveTo(W * .2, 70); x.lineTo(W * .8, 70);
+  for (let y = 70; y < H - 10; y += 22) { x.lineTo(W * .86, y + 11); x.lineTo(W * .78, y + 22); }
+  x.lineTo(W * .7, H - 4); x.lineTo(W * .5, H - 16); x.lineTo(W * .3, H - 4);
+  for (let y = H - 10; y > 70; y -= 22) { x.lineTo(W * .22, y - 11); x.lineTo(W * .14, y - 22); }
+  x.closePath(); x.fill();
+  x.strokeStyle = 'rgba(40,40,55,.8)'; x.lineWidth = 3; for (let k = 0; k < 4; k++) { x.beginPath(); x.moveTo(W * (.32 + k * .12), 84); x.lineTo(W * (.3 + k * .13), H - 30); x.stroke(); }
+  x.fillStyle = '#f7efe4'; x.beginPath(); x.ellipse(W / 2, 44, 22, 28, 0, 0, 7); x.fill();
+  x.strokeStyle = '#333'; x.lineWidth = 1.5; x.stroke();
+  x.fillStyle = '#1c1c1c'; x.beginPath(); x.ellipse(W / 2, 24, 22, 12, 0, Math.PI, 0); x.fill(); x.fillRect(W / 2 - 22, 22, 44, 6);
+  x.fillRect(W / 2 - 11, 40, 7, 2.5); x.fillRect(W / 2 + 4, 40, 7, 2.5);
+  x.fillStyle = '#c0392b'; x.beginPath(); x.arc(W / 2, 60, 3, 0, 7); x.fill();
+});
+const TRAD_TITLE_TEX = canvasTex(96, 352, (x, W, H) => {   // 粉紅紙條「萬善同歸」，中間蓋紅印
+  x.fillStyle = '#f4c6da'; x.fillRect(0, 0, W, H);
+  x.strokeStyle = 'rgba(160,60,100,.35)'; x.strokeRect(3, 3, W - 6, H - 6);
+  x.fillStyle = '#1a1a1a'; x.font = `900 56px "Noto Serif TC","Songti TC",serif`; x.textAlign = 'center'; x.textBaseline = 'middle';
+  '萬善同歸'.split('').forEach((ch, k) => x.fillText(ch, W / 2, 46 + k * 70));
+  x.strokeStyle = 'rgba(200,30,30,.85)'; x.lineWidth = 4; x.strokeRect(W / 2 - 24, 136, 48, 48);
+  x.fillStyle = 'rgba(200,30,30,.8)'; x.font = '900 18px serif'; x.fillText('萬善', W / 2, 152); x.fillText('爺印', W / 2, 172);
+});
+function buildTradZhuang(d) {
+  const g = new THREE.Group(), mats = [], layers = [];
+  TRAD_LAYERS.forEach((L, k) => {
+    const tex = tradPaperTex(d.tiers[k].c);
+    const m = new THREE.Mesh(tradLayerGeo(L), new THREE.MeshStandardMaterial({ map: tex, roughness: .9, side: THREE.DoubleSide, emissive: 0xffd9a0, emissiveMap: tex, emissiveIntensity: .16 }));
+    g.add(m); mats.push(m.material); layers.push(m);
+  });
+  const bam = new THREE.MeshStandardMaterial({ color: 0xc8a060, roughness: .7 }); mats.push(bam);
+  const pole = new THREE.Group(); g.add(pole);
+  [.02, .62, 1.23, TRAD_TOP].forEach(y => { const h = new THREE.Mesh(new THREE.TorusGeometry(.412, .011, 6, 40), bam); h.rotation.x = Math.PI / 2; h.position.y = y; pole.add(h); });
+  const pg = new THREE.CylinderGeometry(.009, .011, TRAD_POLE, 5); pg.translate(0, TRAD_POLE / 2, 0);
+  const POLES = 8, angs = [];
+  for (let k = 0; k < POLES; k++) { const a = (k + .5) / POLES * Math.PI * 2; angs.push(a); const p = new THREE.Mesh(pg, bam); p.position.set(Math.cos(a) * .415, 0, Math.sin(a) * .415); pole.add(p); }
+  const extras = new THREE.Group(); g.add(extras);
+  const face = a => Math.atan2(Math.cos(a), Math.sin(a));   // 平面朝外
+  const fset = FRINGE_SETS[d.fringe] || FRINGE_SETS['綠藍紫'];
+  [.62, 1.23, TRAD_TOP].forEach((y, k) => {
+    const ft = fringeTex(FRINGE_COLORS[fset[k]]);
+    const sk = new THREE.Mesh(new THREE.CylinderGeometry(.43, .445, .17, 24, 1, true), new THREE.MeshStandardMaterial({ map: ft, transparent: true, alphaTest: .4, side: THREE.DoubleSide, emissive: 0xffffff, emissiveMap: ft, emissiveIntensity: .14 }));
+    sk.position.y = y - .075; extras.add(sk); mats.push(sk.material);
+  });
+  if (d.flag) {
+    const fm = new THREE.MeshStandardMaterial({ map: TRAD_FLAG_TEX, transparent: true, alphaTest: .4, side: THREE.DoubleSide, emissive: 0xffffff, emissiveMap: TRAD_FLAG_TEX, emissiveIntensity: .12 }); mats.push(fm);
+    const fg = new THREE.PlaneGeometry(.24, .21); fg.translate(.12, 0, 0);
+    angs.forEach((a, k) => { const f = new THREE.Mesh(fg, fm); f.position.set(Math.cos(a) * .415, TRAD_POLE - .13, Math.sin(a) * .415); f.rotation.y = -a + Math.PI / 2 + (k % 2 ? .5 : -.4); extras.add(f); });
+  }
+  if (d.figure) {
+    const mm = new THREE.MeshStandardMaterial({ map: TRAD_FIG_TEX, transparent: true, alphaTest: .4, side: THREE.DoubleSide, emissive: 0xffffff, emissiveMap: TRAD_FIG_TEX, emissiveIntensity: .12 }); mats.push(mm);
+    const fgeo = new THREE.PlaneGeometry(.17, .5);
+    angs.forEach((a, k) => [1.0, .4].forEach((y, j) => {
+      if ((k + j) % 2) return;
+      const m = new THREE.Mesh(fgeo, mm); m.position.set(Math.cos(a) * .43, y + (k % 3) * .03, Math.sin(a) * .43); m.rotation.y = face(a); extras.add(m);
+    }));
+  }
+  if (d.title) {
+    const tm = new THREE.MeshStandardMaterial({ map: TRAD_TITLE_TEX, roughness: .9, emissive: 0xffffff, emissiveMap: TRAD_TITLE_TEX, emissiveIntensity: .14 }); mats.push(tm);
+    const tl = new THREE.Mesh(new THREE.PlaneGeometry(.12, .44), tm); tl.position.set(0, .93, .405); extras.add(tl);
+  }
+  mats.forEach(m => m.userData.c0 = m.color.clone());
+  g.userData = { mats, layers, roof: null, pole, extras, trad: true };
+  return g;
+}
+const LABEL_R = d => d && d.style === 'trad' ? .41 : .298;
+
 // ---- 田裡的自製䔲 ----
 const customZ = [];   // customZ[i] = { holder, inner, mats, layers, base }
 let mine = [];
@@ -2953,6 +3084,7 @@ function placeCustom(i, d) {
   customZ[i] = { holder, inner, mats: inner.userData.mats, layers: inner.userData.layers, base };
   tintCustom(customZ[i]);
   field.setMatrixAt(i, ZERO); field.instanceMatrix.needsUpdate = true;
+  if (labels[i]) placeLabelMesh(i, labels[i].mesh);   // 傳統式較粗，紅紙往外貼
 }
 mine.forEach(m => placeCustom(m.slot, m.d));
 function tintCustom(cz) { cz.mats.forEach(m => m.color.copy(m.userData.c0).multiply(cz.base)); }
@@ -2989,7 +3121,7 @@ const wFill = new THREE.DirectionalLight(0xffe8d0, .6); wFill.position.set(-3, 5
   const table = new THREE.Mesh(new THREE.BoxGeometry(4.2, .9, 2.2), new THREE.MeshStandardMaterial({ map: planks, roughness: .7 })); table.position.set(0, .45, 0); wScene.add(table);
   // 牆上掛著做好的小䔲、紙捲、顏料、竹篾
   [[-2.6, 'p0'], [2.6, 'p1']].forEach(([x], k) => {
-    const z = buildZhuang(k ? { tiers: [{ c: '天藍', p: '波浪' }, { c: '素白', p: '雲紋' }, { c: '粉紅', p: '蓮花' }], roof: '藍', skirt: true, flag: true } : DEFAULT_DESIGN());
+    const z = buildZhuang(k ? TRAD_DEFAULT() : DEFAULT_DESIGN());
     z.position.set(x, 1.1, -3.4); z.scale.setScalar(.9); wScene.add(z);
   });
   const shelf = new THREE.Mesh(new THREE.BoxGeometry(3.2, .1, .5), new THREE.MeshStandardMaterial({ color: 0x4a2e18 })); shelf.position.set(0, 3.6, -3.7); wScene.add(shelf);
@@ -3005,22 +3137,31 @@ const wFill = new THREE.DirectionalLight(0xffe8d0, .6); wFill.position.set(-3, 5
 })();
 const turntable = new THREE.Mesh(new THREE.CylinderGeometry(.62, .66, .06, 32), new THREE.MeshStandardMaterial({ color: 0x3a2412, roughness: .5 }));
 turntable.position.set(0, .93, 0); wScene.add(turntable);
+let craftStyle = 'trad'; try { craftStyle = localStorage.getItem('qsz-style') || 'trad'; } catch (e) {}
 const CR = { step: 0, prog: 0, rings: 0, paper: 0, d: null, g: null, anim: [], yaw: 0, tierSel: 0, name: '', title: '弟子', suffix: '叩謝' };
+const isTrad = () => CR.d && CR.d.style === 'trad';
 function newCraft() {
   if (CR.g) CR.g.removeFromParent();
-  CR.d = DEFAULT_DESIGN(); CR.step = 0; CR.prog = 0; CR.rings = 0; CR.paper = 0; CR.anim = []; CR.yaw = 0; CR.tierSel = 0; CR.name = '';
+  CR.d = craftStyle === 'trad' ? TRAD_DEFAULT() : DEFAULT_DESIGN(); CR.step = 0; CR.prog = 0; CR.rings = 0; CR.paper = 0; CR.anim = []; CR.yaw = 0; CR.tierSel = 0; CR.name = '';
   const g = new THREE.Group(); g.position.set(0, .96, 0); wScene.add(g); CR.g = g;
   const bam = new THREE.MeshStandardMaterial({ color: 0xc8a060, roughness: .7 });
-  CR.frame = LAYERS.map(([r, h, y]) => {   // 每層：上下竹圈＋12 根直篾
+  const LS = isTrad() ? TRAD_LAYERS : LAYERS;
+  CR.frame = LS.map(([r, h, y], li) => {   // 每層：上下竹圈＋12 根直篾（傳統式：8 根竹竿貫穿，最上層竹竿出頭）
     const F = new THREE.Group(); F.visible = false; g.add(F);
+    if (isTrad()) {
+      for (const yy of [y - h / 2, y + h / 2]) { const ring = new THREE.Mesh(new THREE.TorusGeometry(.412, .012, 6, 40), bam); ring.rotation.x = Math.PI / 2; ring.position.y = yy; F.add(ring); }
+      const top = li === 2 ? TRAD_POLE : y + h / 2, bot = li === 0 ? 0 : y - h / 2;
+      for (let k = 0; k < 8; k++) { const a = (k + .5) / 8 * Math.PI * 2; const st = new THREE.Mesh(new THREE.CylinderGeometry(.009, .011, top - bot, 5), bam); st.position.set(Math.cos(a) * .415, (top + bot) / 2, Math.sin(a) * .415); F.add(st); }
+      return F;
+    }
     for (const yy of [y - h / 2, y + h / 2]) { const ring = new THREE.Mesh(new THREE.TorusGeometry(yy > y ? r * .93 : r, .012, 6, 40), bam); ring.rotation.x = Math.PI / 2; ring.position.y = yy; F.add(ring); }
     for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2, rr = r * .965; const st = new THREE.Mesh(new THREE.CylinderGeometry(.008, .008, h, 4), bam); st.position.set(Math.cos(a) * rr, y, Math.sin(a) * rr); F.add(st); }
     return F;
   });
   const paperT = canvasTex(256, 256, (x, W, H) => { x.fillStyle = '#f6f0e2'; x.fillRect(0, 0, W, H); x.globalAlpha = .08; x.fillStyle = '#7a6040'; for (let i = 0; i < 400; i++) x.fillRect(Math.random() * W, Math.random() * H, 1, 4 + Math.random() * 8); });
   CR.paperT = paperT;
-  CR.skins = LAYERS.map(L => {
-    const geo = layerGeo(L); const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: paperT, roughness: .85, side: THREE.DoubleSide, emissive: 0xffd9a0, emissiveMap: paperT, emissiveIntensity: .1 }));
+  CR.skins = LS.map(L => {
+    const geo = isTrad() ? tradLayerGeo(L) : layerGeo(L); const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: paperT, roughness: .85, side: THREE.DoubleSide, emissive: 0xffd9a0, emissiveMap: paperT, emissiveIntensity: .1 }));
     geo.setDrawRange(0, 0); m.userData.full = geo.index.count; g.add(m); return m;
   });
   CR.deco = null;
@@ -3036,22 +3177,42 @@ function rustle() { if (!ac) return; const t = ac.currentTime, n = ac.createBuff
   const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 2500;
   const g = ac.createGain(); g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.12, t + .1); g.gain.linearRampToValueAtTime(0, t + .75); n.connect(hp).connect(g).connect(master); n.start(t); n.stop(t + .8); }
 const STEP_INS = [
-  '手指繞著骨架畫圓，<b>彎出竹圈</b>（3 層）',
+  '先選<b>樣式</b>，再用手指繞著骨架畫圓，<b>彎出竹圈</b>（3 層）',
   '手指<b>左右滑動</b>，把紙糊上去（3 層）',
   '選擇每一層的<b>顏色與花樣</b>，拖曳可轉動',
   '挑選<b>屋頂顏色</b>，加上彩布與旗幡',
   '寫上<b>敬獻者</b>（可不填），完成送入䔲陣',
 ];
+const STEP_INS_TRAD = [
+  '先選<b>樣式</b>，再用手指繞著骨架畫圓，<b>紮竹圈、立竹竿</b>（3 層）',
+  '手指<b>左右滑動</b>，把紙糊上去（3 層）',
+  '選擇每一層要糊的<b>花紙</b>，拖曳可轉動',
+  '挑選層間<b>鋸齒彩紙</b>，掛上<b>三角旗、紙人、萬善同歸紙條</b>',
+  '寫上<b>敬獻者</b>（可不填），完成送入䔲陣',
+];
 function renderStep() {
   const st = CR.step;
-  document.querySelectorAll('#cpSteps span').forEach((x, k) => { x.className = k === st ? 'on' : k < st ? 'ok' : ''; });
-  $('#cpIns').innerHTML = STEP_INS[st];
+  document.querySelectorAll('#cpSteps span').forEach((x, k) => { x.className = k === st ? 'on' : k < st ? 'ok' : ''; if (k === 2) x.textContent = isTrad() ? '選紙' : '彩繪'; });
+  $('#cpIns').innerHTML = (isTrad() ? STEP_INS_TRAD : STEP_INS)[st];
   const B = $('#cpBody');
   const nextBtn = $('#cpNext');
   nextBtn.textContent = st === 4 ? '完成・送入䔲陣' : '下一步';
-  if (st === 0) { B.innerHTML = `<div class="bar"><b style="width:${CR.rings / 3 * 100}%"></b></div><div class="lab">竹圈 ${CR.rings} / 3</div>`; nextBtn.disabled = CR.rings < 3; }
+  if (st === 0) {
+    B.innerHTML = (CR.rings ? '' : `<div class="row"><span class="lab" style="width:auto">樣式</span><button data-style="trad" class="${isTrad() ? 'on' : ''}">傳統式・竹架紙人</button><button data-style="paint" class="${isTrad() ? '' : 'on'}">彩繪塔式</button></div>`) +
+      `<div class="bar"><b style="width:${CR.rings / 3 * 100}%"></b></div><div class="lab">竹圈 ${CR.rings} / 3</div>`;
+    nextBtn.disabled = CR.rings < 3;
+  }
   else if (st === 1) { B.innerHTML = `<div class="bar"><b style="width:${CR.paper / 3 * 100}%"></b></div><div class="lab">糊紙 ${CR.paper} / 3</div>`; nextBtn.disabled = CR.paper < 3; }
-  else if (st === 2) {
+  else if (st === 2 && isTrad()) {
+    const T = CR.d.tiers[CR.tierSel];
+    B.innerHTML = `<div class="row">${['下層', '中層', '上層'].map((n, k) => `<button data-tier="${k}" class="${k === CR.tierSel ? 'on' : ''}">${n}</button>`).join('')}</div>
+      <div class="row">${Object.entries(TRAD_PAPERS).map(([n, c]) => `<button data-paper="${n}" class="${T.c === n ? 'on' : ''}" style="border-left:1.1em solid ${c}">${n}</button>`).join('')}</div>`;
+    nextBtn.disabled = false;
+  } else if (st === 3 && isTrad()) {
+    B.innerHTML = `<div class="row"><span class="lab" style="width:auto">彩紙</span>${Object.entries(FRINGE_SETS).map(([n, cs]) => `<button data-fringe="${n}" class="${CR.d.fringe === n ? 'on' : ''}"><span style="letter-spacing:-.1em">${cs.map(c => `<i style="display:inline-block;width:.7em;height:.7em;margin-right:.15em;background:${FRINGE_COLORS[c]};border-radius:.1em"></i>`).join('')}</span> ${n}</button>`).join('')}</div>
+      <div class="row"><button data-tog="flag" class="${CR.d.flag ? 'on' : ''}">三角旗</button><button data-tog="figure" class="${CR.d.figure ? 'on' : ''}">紙人</button><button data-tog="title" class="${CR.d.title ? 'on' : ''}">萬善同歸紙條</button></div>`;
+    nextBtn.disabled = false;
+  } else if (st === 2) {
     const T = CR.d.tiers[CR.tierSel];
     B.innerHTML = `<div class="row">${['下層', '中層', '上層'].map((n, k) => `<button data-tier="${k}" class="${k === CR.tierSel ? 'on' : ''}">${n}</button>`).join('')}</div>
       <div class="row">${Object.entries(TIER_COLORS).map(([n, c]) => `<button class="sw ${T.c === n ? 'on' : ''}" data-color="${n}" title="${n}" style="background:${c}"></button>`).join('')}</div>
@@ -3072,7 +3233,10 @@ function renderStep() {
 }
 $('#cpBody').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.tier) { CR.tierSel = +b.dataset.tier; }
+  if (b.dataset.style) { if (CR.rings) return; craftStyle = b.dataset.style; try { localStorage.setItem('qsz-style', craftStyle); } catch (err) {} newCraft(); rustle(); }
+  else if (b.dataset.paper) { CR.d.tiers[CR.tierSel].c = b.dataset.paper; applyPaint(CR.tierSel); }
+  else if (b.dataset.fringe) { CR.d.fringe = b.dataset.fringe; craftDeco(); rustle(); }
+  else if (b.dataset.tier) { CR.tierSel = +b.dataset.tier; }
   else if (b.dataset.color) { CR.d.tiers[CR.tierSel].c = b.dataset.color; applyPaint(CR.tierSel); }
   else if (b.dataset.pat) { CR.d.tiers[CR.tierSel].p = b.dataset.pat; applyPaint(CR.tierSel); }
   else if (b.dataset.roof) { CR.d.roof = b.dataset.roof; craftDeco(); }
@@ -3080,7 +3244,7 @@ $('#cpBody').addEventListener('click', e => {
   renderStep();
 });
 function applyPaint(k) {
-  const m = CR.skins[k].material, t = tierTex(TIER_COLORS[CR.d.tiers[k].c], CR.d.tiers[k].p);
+  const m = CR.skins[k].material, t = isTrad() ? tradPaperTex(CR.d.tiers[k].c) : tierTex(TIER_COLORS[CR.d.tiers[k].c], CR.d.tiers[k].p);
   m.map = t; m.emissiveMap = t; m.needsUpdate = true; rustle();
   CR.anim.push({ t: 0, d: .5, f: u => CR.skins[k].scale.setScalar(1 + Math.sin(u * Math.PI) * .04) });
 }
@@ -3095,7 +3259,7 @@ function craftLabel() {
   const cv = document.createElement('canvas'); drawLabel(cv, CR.title + CR.name + CR.suffix);
   const tx = new THREE.CanvasTexture(cv); tx.colorSpace = THREE.SRGBColorSpace;
   const m = new THREE.Mesh(LABEL_GEO, new THREE.MeshBasicMaterial({ map: tx, color: new THREE.Color(.9, .9, .9) }));
-  m.position.set(0, 1.55, .298); CR.g.add(m); CR.labelMesh = m;
+  m.position.set(0, 1.55, LABEL_R(CR.d)); CR.g.add(m); CR.labelMesh = m;
 }
 function craftMove(e, dx) {
   if (CR.step === 0 && CR.rings < 3) {
@@ -3127,7 +3291,7 @@ function craftNext() {
   CR.step++;
   if (CR.step === 1) { CR.frame.forEach(F => F.visible = true); narrate('m2'); }
   if (CR.step === 2) { CR.skins.forEach(m => m.geometry.setDrawRange(0, m.userData.full)); for (let k = 0; k < 3; k++) applyPaint(k); narrate('m3'); }
-  if (CR.step === 3) { craftDeco(); narrate('m4'); }
+  if (CR.step === 3) { craftDeco(); if (isTrad()) { CR.frame.forEach(F => F.visible = false); showMsg('掛上鋸齒彩紙、三角旗與紙人', 2000); } else narrate('m4'); }
   if (CR.step === 4) { CR.yaw = Math.round(CR.yaw / (Math.PI * 2)) * Math.PI * 2; craftLabel(); narrate('m5'); }
   renderStep();
 }
