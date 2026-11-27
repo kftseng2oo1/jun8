@@ -120,6 +120,9 @@
   #selGo:active{transform:scale(.97)}
   #ricebtn{pointer-events:auto;background:linear-gradient(#d8b878,#9a7a3a);color:#2a1806;border:0;border-radius:1.5em;
     padding:.6em 1.1em;font:inherit;font-size:calc(15px*var(--ui));letter-spacing:.12em;font-weight:700}
+  #burnbtn{pointer-events:auto;background:linear-gradient(#c4561a,#7a2a08);color:#fff1c8;border:1px solid #e3b14a;border-radius:1.5em;
+    padding:.6em 1.1em;font:inherit;font-size:calc(15px*var(--ui));letter-spacing:.12em;font-weight:700}
+  #wp button#wBurn{background:linear-gradient(#c4561a,#7a2a08);color:#fff1c8}
   #rp{position:fixed;left:0;right:0;bottom:0;display:none;z-index:6;padding:0 8px calc(10px + env(safe-area-inset-bottom))}
   #rp .panel{margin:0 auto;width:min(96vw,calc(420px*var(--ui)));background:rgba(32,20,10,.9);border:1px solid rgba(227,177,74,.5);border-radius:16px;padding:12px 14px}
   #rpIns{text-align:center;font-size:calc(14px*var(--ui));line-height:1.6;margin-bottom:8px;letter-spacing:.06em}
@@ -208,7 +211,46 @@
   #zoomtip{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);background:rgba(10,14,28,.75);color:#efe4cc;
     border:1px solid rgba(239,228,204,.3);border-radius:14px;padding:8px 16px;font-size:15px;letter-spacing:.1em;
     pointer-events:none;opacity:0;transition:opacity .4s;z-index:9}
+  /* ---------- 金爐・燒金紙 ---------- */
+  #burn{position:fixed;inset:0;z-index:40;display:none;background:radial-gradient(120% 70% at 50% 30%,#3a1206 0%,#1a0702 55%,#0b0301 100%);color:#f6d98a;touch-action:none;user-select:none;-webkit-user-select:none}
+  #burn.on{display:block;animation:fadeIn .35s}
+  #burn canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none}
+  #burn .hd{position:absolute;left:0;right:0;top:0;padding:calc(env(safe-area-inset-top,0px) + 10px) 14px 0;text-align:center;pointer-events:none}
+  #burn .hd h3{font-size:calc(20px * var(--ui));font-weight:900;letter-spacing:.35em;color:#f6d98a;text-shadow:0 2px 8px #000}
+  #burn .hd .to{font-size:calc(13px * var(--ui));color:#d9b46a;letter-spacing:.1em;margin-top:2px}
+  #burn .x{position:absolute;top:calc(env(safe-area-inset-top,0px) + 4px);right:8px;border:0;background:none;color:#d9b46a;font-size:30px;padding:4px 10px;z-index:2}
+  #burn .kinds{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 66px * var(--ui));display:flex;justify-content:center;gap:6px;padding:0 10px;z-index:2}
+  #burn .kinds button{flex:0 1 84px;min-height:calc(44px * var(--ui));padding:3px 4px;border:1px solid #8b6020;border-radius:4px;background:rgba(40,16,4,.75);color:#e8c77a;font-family:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.15}
+  #burn .kinds b{font-size:calc(15px * var(--ui));letter-spacing:.15em}
+  #burn .kinds small{font-size:calc(10px * var(--ui));color:#b8925a}
+  #burn .kinds button.on{background:linear-gradient(#e2bd62,#b8862b);color:#3a1505;border-color:#f6d98a}
+  #burn .kinds button.on small{color:#5a2a08}
+  #burn .stat{position:absolute;left:0;right:0;text-align:center;pointer-events:none}
+  #burn .stat .l1{font-size:calc(14px * var(--ui));color:#e8c77a;letter-spacing:.2em}
+  #burn .stat .num{font-size:calc(44px * var(--ui));font-weight:900;color:#fff4d6;letter-spacing:.02em;line-height:1.1;text-shadow:0 0 18px rgba(255,140,40,.55)}
+  #burn .stat .num small{font-size:calc(20px * var(--ui));color:#ff9a3a;margin-left:6px}
+  #burn .stat .l2{font-size:calc(12.5px * var(--ui));color:#b8925a;letter-spacing:.08em}
+  #burn .hint{position:absolute;left:0;right:0;text-align:center;font-size:calc(14px * var(--ui));color:#e8c77a;letter-spacing:.25em;pointer-events:none;animation:burnHint 1.6s ease-in-out infinite}
+  @keyframes burnHint{0%,100%{opacity:.45;transform:translateY(0)}50%{opacity:1;transform:translateY(-6px)}}
+  #burn .ft{position:absolute;left:0;right:0;bottom:0;display:flex;gap:10px;padding:0 14px calc(env(safe-area-inset-bottom,0px) + 14px);z-index:2}
+  #burn .ft button{flex:1;min-height:calc(46px * var(--ui));border-radius:4px;font-family:inherit;font-weight:900;font-size:calc(16px * var(--ui));letter-spacing:.2em;border:1px solid #e3b14a}
+  #burn .ft .stack{background:rgba(40,16,4,.8);color:#f6d98a}
+  #burn .ft .done{background:linear-gradient(#b42424,#7a1414);color:#f6d98a}
+  #hapt{position:fixed;left:-200px;top:0;width:1px;height:1px;opacity:0;overflow:hidden}
+  #burn h3,#burn .to{margin:0;padding:0}
+  #burn .ft button{white-space:nowrap;letter-spacing:.08em;padding:0 6px}
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 </style>
+<div id="burn">
+  <canvas></canvas>
+  <button class="x" aria-label="離開">×</button>
+  <div class="hd"><h3>金爐・化財帛</h3><div class="to"></div></div>
+  <div class="kinds"></div>
+  <div class="stat"><div class="l1">已經燒了</div><div class="num"><span>0</span><small>張</small></div><div class="l2"></div></div>
+  <div class="hint">往上滑・送金紙入爐</div>
+  <div class="ft"><button class="stack">整疊化</button><button class="done">化畢・完成</button></div>
+</div>
+<label id="hapt" aria-hidden="true"><input type="checkbox" switch tabindex="-1"></label>
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
 "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
@@ -239,7 +281,7 @@
 </div></div>
 <div id="wp"><div class="bar">
   <div class="tip" id="wpTip">拖曳環顧・點鐘或鼓可敲響</div>
-  <button id="wOffer" class="main">擺供品</button><button id="wIncense" class="main">上香</button><button id="wPray">祈福</button><button id="wBell">撞鐘</button><button id="wDrum">擊鼓</button><button id="wExit">出廟</button>
+  <button id="wOffer" class="main">擺供品</button><button id="wIncense" class="main">上香</button><button id="wPray">祈福</button><button id="wBell">撞鐘</button><button id="wDrum">擊鼓</button><button id="wBurn">燒金紙</button><button id="wExit">出廟</button>
 </div></div>
 <div id="pf"><div class="panel">
   <h3>誠心祈福</h3>
@@ -281,7 +323,7 @@
     <div class="ly" data-i="1"><span>中界・洗淨</span><i><b></b></i></div>
     <div class="ly" data-i="2"><span>上界・天堂</span><i><b></b></i></div>
   </div>
-  <div id="btns"><button id="pullbtn">牽䔲</button><button id="morebtn">更多 ▾</button><div id="more"><button id="ricebtn">挑飯擔</button><button id="craftbtn">製作水䔲</button><button id="templebtn">入廟參拜</button><button id="bzbtn">大䔲燈控</button><button id="dedibtn">貼紅紙・敬獻</button><button id="rite">倒䔲・燒䔲</button></div></div>
+  <div id="btns"><button id="pullbtn">牽䔲</button><button id="morebtn">更多 ▾</button><div id="more"><button id="ricebtn">挑飯擔</button><button id="craftbtn">製作水䔲</button><button id="templebtn">入廟參拜</button><button id="bzbtn">大䔲燈控</button><button id="dedibtn">貼紅紙・敬獻</button><button id="burnbtn">燒金紙</button><button id="rite">倒䔲・燒䔲</button></div></div>
   <div id="hinttext"></div>
 </div>
 <div id="ending"><div class="box">
@@ -3863,6 +3905,398 @@ try {
 document.addEventListener('visibilitychange', () => {
   if (!ac) return; document.hidden ? ac.suspend() : ac.resume();
 });
+
+/* ================= 金爐・燒金紙：往上滑把金紙送進金爐，有燒紙聲、手機震動、累計張數 =================
+   （與 3D 族譜 kftseng2oo1/3d-zupu 同一套）每疊 50 張；累計張數、疊數、今日存在本機 localStorage。 */
+const FONT = '"Noto Serif TC","Songti TC","PMingLiU",serif';
+const twDay = () => { const d = new Date(Date.now() + 8 * 3600e3); return { s: d.toISOString().slice(0, 10) }; };
+const JOSS = {
+  dayin:   { name: '大銀', for: '水魂・好兄弟', paper: '#e4d5a6', foil: 'silver' },
+  xiaoyin: { name: '小銀', for: '水魂・孤魂', paper: '#e2d3a2', foil: 'silver', small: true },
+  jingyi:  { name: '經衣', for: '更衣・上岸', paper: '#ecdcb0', clothes: true },
+  kanjin:  { name: '刈金', for: '萬善爺', paper: '#ead08a', foil: 'gold' },
+};
+const STACK_N = 50, BURN_KEY = 'qsz-burn';
+const BURN = { on: false, pid: 'all', kind: 'kanjin', st: null, session: 0, sheets: [], parts: [], floats: [], heat: 0, drag: null, auto: 0, raf: 0, last: 0, W: 0, H: 0, dpr: 1, tex: {}, sprite: {}, snd: null, heat3d: 0 };
+function burnStats() {
+  if (BURN.st) return BURN.st;
+  let s = null; try { s = JSON.parse(localStorage.getItem(BURN_KEY) || 'null'); } catch (e) {}
+  return BURN.st = Object.assign({ total: 0, stacks: 0, left: STACK_N, days: {} }, s || {});
+}
+function saveBurn() {
+  const s = burnStats(), keep = Object.keys(s.days).sort().slice(-60);   // 只留近 60 天
+  s.days = Object.fromEntries(keep.map(k => [k, s.days[k]]));
+  try { localStorage.setItem(BURN_KEY, JSON.stringify(s)); } catch (e) {}
+}
+/* 紙面：竹紙纖維＋中央金箔／銀箔（壽金、福金加紅印），右側小紅印 */
+function paperTex(kind) {
+  if (BURN.tex[kind]) return BURN.tex[kind];
+  const k = JOSS[kind], W = 240, H = 312, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d'), rnd = seeded(kind.length * 977 + 3);
+  g.fillStyle = k.paper; g.fillRect(0, 0, W, H);
+  for (let i = 0; i < 900; i++) {   // 纖維與斑點
+    g.fillStyle = rnd() < .5 ? `rgba(120,80,20,${.05 + rnd() * .1})` : `rgba(255,250,220,${.08 + rnd() * .14})`;
+    const x = rnd() * W, y = rnd() * H;
+    if (rnd() < .3) { g.save(); g.translate(x, y); g.rotate(rnd() * 3); g.fillRect(0, 0, 4 + rnd() * 10, .8); g.restore(); } else g.fillRect(x, y, 1 + rnd() * 1.6, 1 + rnd() * 1.6);
+  }
+  const eg = g.createRadialGradient(W / 2, H / 2, W * .3, W / 2, H / 2, W * .85); eg.addColorStop(0, 'rgba(0,0,0,0)'); eg.addColorStop(1, 'rgba(110,60,10,.28)');
+  g.fillStyle = eg; g.fillRect(0, 0, W, H);
+  if (k.clothes) {   // 經衣：紅墨印衣、鞋、梳、剪、鏡
+    g.strokeStyle = 'rgba(170,30,24,.85)'; g.fillStyle = 'rgba(170,30,24,.85)'; g.lineWidth = 3; g.lineJoin = 'round';
+    g.strokeRect(14, 14, W - 28, H - 28);
+    g.beginPath(); g.moveTo(W / 2 - 22, 56); g.lineTo(W / 2 - 70, 80); g.lineTo(W / 2 - 58, 108); g.lineTo(W / 2 - 38, 98); g.lineTo(W / 2 - 40, 178); g.lineTo(W / 2 + 40, 178); g.lineTo(W / 2 + 38, 98); g.lineTo(W / 2 + 58, 108); g.lineTo(W / 2 + 70, 80); g.lineTo(W / 2 + 22, 56); g.quadraticCurveTo(W / 2, 74, W / 2 - 22, 56); g.stroke();
+    g.beginPath(); g.moveTo(W / 2, 70); g.lineTo(W / 2, 178); g.stroke();
+    g.beginPath(); g.ellipse(52, 226, 22, 9, 0, 0, 7); g.stroke();   // 鞋
+    g.strokeRect(96, 214, 46, 16); for (let i = 0; i < 8; i++) { g.beginPath(); g.moveTo(99 + i * 5.5, 230); g.lineTo(99 + i * 5.5, 240); g.stroke(); }   // 梳
+    g.beginPath(); g.arc(186, 226, 15, 0, 7); g.stroke();   // 鏡
+    g.font = `900 30px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('經　衣', W / 2, H - 42);
+    return BURN.tex[kind] = c;
+  }
+  const fs = k.small ? 84 : 104, fx = W / 2 - fs / 2, fy = H * .47 - fs / 2;
+  const fg = g.createLinearGradient(fx, fy, fx + fs, fy + fs);
+  if (k.foil === 'gold') { fg.addColorStop(0, '#b8841e'); fg.addColorStop(.35, '#f7dc7a'); fg.addColorStop(.55, '#c9962c'); fg.addColorStop(1, '#f2cf62'); }
+  else { fg.addColorStop(0, '#8e959c'); fg.addColorStop(.35, '#f2f5f7'); fg.addColorStop(.55, '#a9b0b6'); fg.addColorStop(1, '#e4e8eb'); }
+  g.fillStyle = fg; g.fillRect(fx, fy, fs, fs);
+  for (let i = 0; i < 260; i++) { g.fillStyle = `rgba(${rnd() < .5 ? '255,255,255' : '80,50,10'},${rnd() * .18})`; g.fillRect(fx + rnd() * fs, fy + rnd() * fs, 1.4, 1.4); }
+  if (k.mark) {   // 紅印：外框＋字
+    g.strokeStyle = 'rgba(178,24,24,.88)'; g.lineWidth = 4; g.strokeRect(fx + 9, fy + 9, fs - 18, fs - 18);
+    g.fillStyle = 'rgba(178,24,24,.9)'; g.font = `900 ${fs * .58}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(k.mark, W / 2, fy + fs / 2 + 3);
+  }
+  g.strokeStyle = 'rgba(160,30,20,.55)'; g.lineWidth = 1.5; g.strokeRect(W - 34, H * .42, 16, 46);   // 右側小印
+  g.fillStyle = 'rgba(160,30,20,.5)'; g.fillRect(W - 31, H * .42 + 4, 10, 6); g.fillRect(W - 31, H * .42 + 16, 10, 6); g.fillRect(W - 31, H * .42 + 28, 10, 6);
+  return BURN.tex[kind] = c;
+}
+function blob(stops) {   // 火焰粒子貼圖
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d'), r = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  stops.forEach(([o, col]) => r.addColorStop(o, col)); g.fillStyle = r; g.fillRect(0, 0, 64, 64); return c;
+}
+function burnSprites() {
+  if (BURN.sprite.y) return BURN.sprite;
+  BURN.sprite = {
+    y: blob([[0, 'rgba(255,248,200,1)'], [.35, 'rgba(255,200,80,.7)'], [1, 'rgba(255,120,20,0)']]),
+    o: blob([[0, 'rgba(255,170,60,.9)'], [.5, 'rgba(240,90,20,.45)'], [1, 'rgba(180,30,10,0)']]),
+    r: blob([[0, 'rgba(200,50,20,.55)'], [1, 'rgba(90,10,5,0)']]),
+    s: blob([[0, 'rgba(60,40,30,.35)'], [1, 'rgba(40,30,25,0)']]),
+  };
+  return BURN.sprite;
+}
+/* ---------- 版面（CSS 像素） ---------- */
+function burnLayout() {
+  const W = BURN.W, H = BURN.H, fs = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ui')) || 1;
+  const top = 122 * fs, mw = Math.min(W * .4, 190, (H - top) * .2), mh = mw * .62;
+  const mouth = { x: W / 2, y: top + mw * 1.12 + mh / 2 + 6, w: mw, h: mh };
+  const statY = mouth.y + mh / 2 + mw * .24 + 10, foot = H - 70 * fs - 24;
+  const avail = foot - (statY + 104 * fs + 40), sw = Math.max(90, Math.min(W * .42, 176, avail / 1.3)), sh = sw * 1.3;
+  const stack = { x: W / 2, y: Math.max(statY + 104 * fs + 40 + sh / 2, foot - sh / 2 - 10), w: sw, h: sh };
+  return { mouth, stack, statY, top };
+}
+/* 金爐本體：紅磚爐身、金邊、拱形爐口、屋簷、爐頂葫蘆；爐口內的火焰由粒子畫 */
+function drawFurnace(g, L, T) {
+  const m = L.mouth, bw = m.w * 1.55, bx = m.x - bw / 2, by = m.y - m.h / 2 - m.w * .2, bh = m.h + m.w * .42;
+  // 屋頂與爐頂
+  g.save();
+  const ry = by - m.w * .06;
+  g.fillStyle = '#3a1206'; g.beginPath(); g.moveTo(m.x - bw * .38, ry - m.w * .38); g.lineTo(m.x + bw * .38, ry - m.w * .38); g.lineTo(m.x + bw * .62, ry); g.lineTo(m.x - bw * .62, ry); g.closePath(); g.fill();
+  const rg = g.createLinearGradient(0, ry - m.w * .4, 0, ry); rg.addColorStop(0, '#6a1a0c'); rg.addColorStop(1, '#a42a14');
+  g.fillStyle = rg; g.beginPath(); g.moveTo(m.x - bw * .36, ry - m.w * .36);
+  g.quadraticCurveTo(m.x, ry - m.w * .42, m.x + bw * .36, ry - m.w * .36); g.quadraticCurveTo(m.x + bw * .5, ry - m.w * .06, m.x + bw * .66, ry - m.w * .1);
+  g.lineTo(m.x + bw * .6, ry + 4); g.lineTo(m.x - bw * .6, ry + 4); g.lineTo(m.x - bw * .66, ry - m.w * .1); g.quadraticCurveTo(m.x - bw * .5, ry - m.w * .06, m.x - bw * .36, ry - m.w * .36); g.fill();
+  g.strokeStyle = '#e2bd62'; g.lineWidth = 2.5; g.stroke();
+  for (let i = -5; i <= 5; i++) { g.strokeStyle = 'rgba(40,8,2,.45)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(m.x + i * bw * .06, ry - m.w * .36); g.lineTo(m.x + i * bw * .1, ry); g.stroke(); }   // 瓦溝
+  // 爐頂煙囪＋葫蘆
+  const cy = ry - m.w * .4;
+  g.fillStyle = '#7a1e0e'; g.fillRect(m.x - m.w * .12, cy - m.w * .2, m.w * .24, m.w * .22);
+  g.strokeStyle = '#e2bd62'; g.lineWidth = 2; g.strokeRect(m.x - m.w * .12, cy - m.w * .2, m.w * .24, m.w * .22);
+  const gg = g.createRadialGradient(m.x - 4, cy - m.w * .3, 2, m.x, cy - m.w * .28, m.w * .1); gg.addColorStop(0, '#fff1b0'); gg.addColorStop(1, '#b8862b');
+  g.fillStyle = gg; g.beginPath(); g.arc(m.x, cy - m.w * .27, m.w * .07, 0, 7); g.fill(); g.beginPath(); g.arc(m.x, cy - m.w * .38, m.w * .045, 0, 7); g.fill();
+  // 爐身
+  const bg = g.createLinearGradient(bx, 0, bx + bw, 0); bg.addColorStop(0, '#5a1408'); bg.addColorStop(.5, '#9a2a14'); bg.addColorStop(1, '#5a1408');
+  g.fillStyle = bg; g.fillRect(bx, by, bw, bh);
+  g.strokeStyle = 'rgba(30,6,2,.35)'; g.lineWidth = 1;
+  for (let y = by + 12, r = 0; y < by + bh; y += 12, r++) { g.beginPath(); g.moveTo(bx, y); g.lineTo(bx + bw, y); g.stroke(); for (let x = bx + (r % 2 ? 14 : 0); x < bx + bw; x += 28) { g.beginPath(); g.moveTo(x, y - 12); g.lineTo(x, y); g.stroke(); } }
+  g.strokeStyle = '#e2bd62'; g.lineWidth = 3; g.strokeRect(bx + 2, by + 2, bw - 4, bh - 4);
+  // 爐口內部（依火勢發亮）
+  const heat = .35 + BURN.heat * .65;
+  g.save(); arch(g, m); g.clip();
+  const ig = g.createRadialGradient(m.x, m.y + m.h * .45, 4, m.x, m.y + m.h * .2, m.w * .8);
+  ig.addColorStop(0, `rgba(255,${190 + heat * 50 | 0},90,1)`); ig.addColorStop(.4, `rgba(${200 + heat * 40 | 0},60,10,1)`); ig.addColorStop(1, '#1a0400');
+  g.fillStyle = ig; g.fillRect(m.x - m.w, m.y - m.h, m.w * 2, m.h * 2);
+  g.restore();
+  // 爐口金邊與「金爐」匾
+  g.strokeStyle = '#f2cf62'; g.lineWidth = 4; arch(g, m); g.stroke();
+  const pw = m.w * .5, ph = m.w * .16, py = by + (m.y - m.h / 2 - by) / 2 - ph / 2;
+  g.fillStyle = '#2a0a04'; g.fillRect(m.x - pw / 2, py, pw, ph); g.strokeStyle = '#e2bd62'; g.lineWidth = 1.5; g.strokeRect(m.x - pw / 2, py, pw, ph);
+  g.fillStyle = '#f2cf62'; g.font = `900 ${ph * .72}px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('金　爐', m.x, py + ph / 2 + 1);
+  g.restore();
+}
+function arch(g, m) {   // 拱形爐口路徑
+  const l = m.x - m.w / 2, r = m.x + m.w / 2, t = m.y - m.h / 2, b = m.y + m.h / 2, rr = m.w / 2;
+  g.beginPath(); g.moveTo(l, b); g.lineTo(l, t + rr * .55); g.quadraticCurveTo(l, t, m.x, t); g.quadraticCurveTo(r, t, r, t + rr * .55); g.lineTo(r, b); g.closePath();
+}
+function drawSheet(g, kind, x, y, w, h, rot, alpha = 1) {
+  g.save(); g.globalAlpha = alpha; g.translate(x, y); g.rotate(rot);
+  g.shadowColor = 'rgba(0,0,0,.45)'; g.shadowBlur = 10; g.shadowOffsetY = 4;
+  g.drawImage(paperTex(kind), -w / 2, -h / 2, w, h); g.restore();
+}
+function drawStack(g, L) {
+  const s = burnStats(), st = L.stack, n = s.left, layers = Math.max(1, Math.round(n / STACK_N * 14));
+  const tex = paperTex(BURN.kind);
+  g.save(); g.shadowColor = 'rgba(0,0,0,.65)'; g.shadowBlur = 22; g.shadowOffsetY = 8;   // 紙疊落在地上的影子
+  g.fillStyle = '#b8964a'; g.fillRect(st.x - st.w / 2 + 1, st.y - st.h / 2 + layers * 1.6, st.w - 2, st.h); g.restore();
+  for (let i = layers; i >= 1; i--) {   // 紙疊厚度：下面一層層露出邊
+    g.fillStyle = i % 2 ? '#c9a855' : '#e0c47c';
+    g.fillRect(st.x - st.w / 2 + 1, st.y - st.h / 2 + i * 1.6, st.w - 2, st.h);
+  }
+  const d = BURN.drag;
+  if (n > 1 || !d) g.drawImage(tex, st.x - st.w / 2, st.y - st.h / 2, st.w, st.h);   // 被拉起的那張底下還有一張
+  if (d && n > 0) {
+    const dy = Math.min(0, d.y - d.y0), dx = (d.x - d.x0) * .4;
+    drawSheet(g, BURN.kind, st.x + dx, st.y + dy, st.w * (1 + Math.min(.06, -dy / 3000)), st.h, dx / 600);
+  }
+}
+/* ---------- 粒子 ---------- */
+function spawnFire(L, dt) {
+  const m = L.mouth, rate = (26 + BURN.heat * 140) * dt;
+  for (let i = 0; i < rate || (Math.random() < rate % 1 && i < rate + 1); i++) {
+    const x = m.x + (Math.random() - .5) * m.w * .8, big = .6 + BURN.heat;
+    BURN.parts.push({ t: 'f', x, y: m.y + m.h * .5, vx: (Math.random() - .5) * 18, vy: -(40 + Math.random() * 70) * big, life: 0, max: .5 + Math.random() * .5, sz: (18 + Math.random() * 26) * big * (m.w / 200) });
+  }
+  if (Math.random() < (2 + BURN.heat * 18) * dt) BURN.parts.push({ t: 'k', x: m.x + (Math.random() - .5) * m.w * .6, y: m.y + m.h * .2, vx: (Math.random() - .5) * 60, vy: -(90 + Math.random() * 160), life: 0, max: .8 + Math.random() * 1.2, sz: 1.2 + Math.random() * 1.8 });
+  if (Math.random() < (.6 + BURN.heat * 6) * dt) BURN.parts.push({ t: 'a', x: m.x + (Math.random() - .5) * m.w * .5, y: m.y - m.h * .3, vx: (Math.random() - .5) * 40, vy: -(30 + Math.random() * 50), life: 0, max: 2 + Math.random() * 2, sz: 2 + Math.random() * 4, r: Math.random() * 6, vr: (Math.random() - .5) * 6 });
+}
+function tickParts(g, L, dt) {
+  const S = burnSprites(), m = L.mouth;
+  g.save(); arch(g, m); g.clip(); g.globalCompositeOperation = 'lighter';
+  BURN.parts.forEach(p => { if (p.t !== 'f') return;
+    const k = p.life / p.max, sz = p.sz * (1 - k * .55), img = k < .3 ? S.y : k < .7 ? S.o : S.r;
+    g.globalAlpha = Math.min(1, (1 - k) * 1.4); g.drawImage(img, p.x - sz / 2, p.y - sz / 2, sz, sz * 1.25);
+  });
+  g.restore();
+  // 爐口上方的熱光
+  g.save(); g.globalCompositeOperation = 'lighter';
+  const hg = g.createRadialGradient(m.x, m.y - m.h * .2, 4, m.x, m.y, m.w * 1.1); hg.addColorStop(0, `rgba(255,150,50,${.12 + BURN.heat * .25})`); hg.addColorStop(1, 'rgba(255,80,20,0)');
+  g.fillStyle = hg; g.fillRect(m.x - m.w * 1.2, m.y - m.w * 1.2, m.w * 2.4, m.w * 2.4);
+  BURN.parts.forEach(p => { if (p.t !== 'k') return;
+    const k = p.life / p.max; g.globalAlpha = (1 - k) * (.6 + Math.random() * .4); g.fillStyle = k < .4 ? '#fff2b0' : '#ff9a3a';
+    g.beginPath(); g.arc(p.x, p.y, p.sz, 0, 7); g.fill();
+  });
+  g.restore();
+  BURN.parts.forEach(p => { if (p.t !== 'a') return;   // 紙灰
+    const k = p.life / p.max; g.save(); g.globalAlpha = (1 - k) * .75; g.translate(p.x, p.y); g.rotate(p.r);
+    g.fillStyle = k < .15 ? '#ff8a3a' : '#3a3330'; g.fillRect(-p.sz / 2, -p.sz / 3, p.sz, p.sz * .66); g.restore();
+  });
+  for (let i = BURN.parts.length - 1; i >= 0; i--) {
+    const p = BURN.parts[i]; p.life += dt; if (p.life >= p.max) { BURN.parts.splice(i, 1); continue; }
+    p.x += p.vx * dt; p.y += p.vy * dt;
+    if (p.t === 'f') p.vx += (m.x - p.x) * dt * 1.5;
+    if (p.t === 'a') { p.r += p.vr * dt; p.vx += Math.sin(p.life * 3 + p.sz) * 30 * dt; p.vy *= .995; }
+    if (p.t === 'k') p.vy += 40 * dt;
+  }
+  if (BURN.parts.length > 700) BURN.parts.splice(0, BURN.parts.length - 700);
+}
+/* 飛入爐口的金紙：飛行 → 在爐口內捲曲燒成灰（燒洞由隨機一點往外擴，邊緣橘紅） */
+const burnTmp = document.createElement('canvas');
+function tickSheets(g, L, dt, now) {
+  const m = L.mouth;
+  for (let i = BURN.sheets.length - 1; i >= 0; i--) {
+    const s = BURN.sheets[i], t = (now - s.t0) / 1000;
+    if (s.ph === 'fly') {
+      const k = Math.min(1, t / .42), e = 1 - Math.pow(1 - k, 3);
+      s.x = s.x0 + (s.tx - s.x0) * e; s.y = s.y0 + (s.ty - s.y0) * e - Math.sin(k * Math.PI) * 60;
+      s.sc = 1 - e * .62; s.rot = s.r0 + s.spin * e;
+      drawSheet(g, s.kind, s.x, s.y, L.stack.w * s.sc, L.stack.h * s.sc, s.rot);
+      if (k >= 1) { s.ph = 'burn'; s.t0 = now; ignite(L, s); }
+    } else {
+      const k = Math.min(1, t / 1.1), w = L.stack.w * s.sc * (1 - k * .35), h = L.stack.h * s.sc * (1 - k * .55);
+      const tex = paperTex(s.kind); burnTmp.width = tex.width; burnTmp.height = tex.height;
+      const b = burnTmp.getContext('2d'); b.drawImage(tex, 0, 0);
+      const cx = tex.width * s.hx, cy = tex.height * s.hy, R = k * tex.height * 1.25;
+      b.globalCompositeOperation = 'source-atop';
+      b.fillStyle = `rgba(60,20,0,${k * .5})`; b.fillRect(0, 0, tex.width, tex.height);
+      const eg = b.createRadialGradient(cx, cy, Math.max(0, R - 4), cx, cy, R + 34);
+      eg.addColorStop(0, 'rgba(20,8,2,1)'); eg.addColorStop(.25, 'rgba(255,110,20,1)'); eg.addColorStop(.6, 'rgba(255,190,80,.6)'); eg.addColorStop(1, 'rgba(255,190,80,0)');
+      b.fillStyle = eg; b.fillRect(0, 0, tex.width, tex.height);
+      b.globalCompositeOperation = 'destination-out';
+      const hg = b.createRadialGradient(cx, cy, 0, cx, cy, Math.max(1, R)); hg.addColorStop(0, 'rgba(0,0,0,1)'); hg.addColorStop(.85, 'rgba(0,0,0,1)'); hg.addColorStop(1, 'rgba(0,0,0,0)');
+      b.fillStyle = hg; b.fillRect(0, 0, tex.width, tex.height);
+      g.save(); arch(g, m); g.clip(); g.translate(s.x, s.y + k * 10); g.rotate(s.rot + Math.sin(t * 9) * .08 * (1 - k)); g.scale(1, 1 - k * .3);
+      g.drawImage(burnTmp, -w / 2, -h / 2, w, h); g.restore();
+      if (Math.random() < .5) BURN.parts.push({ t: 'f', x: s.x + (Math.random() - .5) * w, y: s.y + (Math.random() - .3) * h, vx: 0, vy: -90 - Math.random() * 60, life: 0, max: .35 + Math.random() * .3, sz: 22 + Math.random() * 20 });
+      if (k >= 1) { BURN.sheets.splice(i, 1); for (let j = 0; j < 4; j++) BURN.parts.push({ t: 'a', x: s.x + (Math.random() - .5) * 30, y: s.y, vx: (Math.random() - .5) * 50, vy: -(40 + Math.random() * 60), life: 0, max: 2 + Math.random() * 2, sz: 3 + Math.random() * 4, r: Math.random() * 6, vr: (Math.random() - .5) * 6 }); }
+    }
+  }
+}
+function ignite(L, s) {
+  BURN.heat = Math.min(1, BURN.heat + .3);
+  for (let j = 0; j < 14; j++) BURN.parts.push({ t: 'k', x: s.x, y: s.y, vx: (Math.random() - .5) * 160, vy: -(80 + Math.random() * 200), life: 0, max: .6 + Math.random(), sz: 1 + Math.random() * 2 });
+  burnSnd('ignite');
+}
+function tickFloats(g, dt) {
+  g.save(); g.textAlign = 'center'; g.textBaseline = 'middle';
+  for (let i = BURN.floats.length - 1; i >= 0; i--) {
+    const f = BURN.floats[i]; f.life += dt; if (f.life > f.max) { BURN.floats.splice(i, 1); continue; }
+    const k = f.life / f.max; g.globalAlpha = k < .15 ? k / .15 : 1 - (k - .15) / .85;
+    g.font = `900 ${f.sz}px ${FONT}`; g.fillStyle = f.col; g.shadowColor = 'rgba(0,0,0,.7)'; g.shadowBlur = 6;
+    g.fillText(f.txt, f.x, f.y - k * 46);
+  }
+  g.restore();
+}
+function burnFrame(now) {
+  if (!BURN.on) return;
+  BURN.raf = requestAnimationFrame(burnFrame);
+  const dt = Math.min(.05, (now - (BURN.last || now)) / 1000); BURN.last = now;
+  const el = document.getElementById('burn'), cv = el.querySelector('canvas'), g = cv.getContext('2d'), L = burnLayout();
+  g.setTransform(BURN.dpr, 0, 0, BURN.dpr, 0, 0); g.clearRect(0, 0, BURN.W, BURN.H);
+  BURN.heat = Math.max(0, BURN.heat - dt * .22);
+  drawFurnace(g, L, now / 1000);
+  spawnFire(L, dt); tickParts(g, L, dt);
+  drawStack(g, L);
+  tickSheets(g, L, dt, now);
+  tickFloats(g, dt);
+  burnAmbient();
+}
+/* ---------- 聲音：爐火底噪＋劈啪聲；送紙時「咻」一聲 ---------- */
+function burnAC() {
+  initAudio(); if (!ac) throw new Error('no audio');
+  if (ac.state === 'suspended') ac.resume();
+  if (!BURN.noise) { const len = ac.sampleRate * 2, b = ac.createBuffer(1, len, ac.sampleRate), d = b.getChannelData(0); let last = 0; for (let i = 0; i < len; i++) { const w = Math.random() * 2 - 1; d[i] = w; } BURN.noise = b; }
+  return ac;
+}
+function burnSnd(type) {
+  try {
+    const ac = burnAC(), t = ac.currentTime, src = ac.createBufferSource(); src.buffer = BURN.noise;
+    const f = ac.createBiquadFilter(), gn = ac.createGain(); src.connect(f); f.connect(gn); gn.connect(master);
+    if (type === 'whoosh') {
+      f.type = 'bandpass'; f.Q.value = 1.2; f.frequency.setValueAtTime(350, t); f.frequency.exponentialRampToValueAtTime(2200, t + .32);
+      gn.gain.setValueAtTime(0, t); gn.gain.linearRampToValueAtTime(.32, t + .08); gn.gain.exponentialRampToValueAtTime(.001, t + .4);
+      src.start(t, Math.random()); src.stop(t + .45);
+    } else if (type === 'rustle') {
+      f.type = 'highpass'; f.frequency.value = 2500; gn.gain.setValueAtTime(.12, t); gn.gain.exponentialRampToValueAtTime(.001, t + .12);
+      src.start(t, Math.random()); src.stop(t + .14);
+    } else if (type === 'ignite') {   // 紙著火：呼一聲＋一串劈啪
+      f.type = 'lowpass'; f.frequency.value = 900; gn.gain.setValueAtTime(0, t); gn.gain.linearRampToValueAtTime(.35, t + .06); gn.gain.exponentialRampToValueAtTime(.001, t + .9);
+      src.start(t, Math.random()); src.stop(t + .95);
+      for (let i = 0; i < 9; i++) crackle(ac, t + Math.random() * .9, .1 + Math.random() * .2);
+    }
+  } catch (e) {}
+}
+function crackle(ac, t, amp) {
+  const src = ac.createBufferSource(); src.buffer = BURN.noise;
+  const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1800 + Math.random() * 3000; f.Q.value = 2;
+  const gn = ac.createGain(); gn.gain.setValueAtTime(amp, t); gn.gain.exponentialRampToValueAtTime(.001, t + .015 + Math.random() * .03);
+  src.connect(f); f.connect(gn); gn.connect(master); src.start(t, Math.random() * 1.5); src.stop(t + .06);
+}
+function burnAmbient() {
+  if (!BURN.snd) return;
+  try {
+    const ac = ac, t = ac.currentTime;
+    BURN.snd.g.gain.setTargetAtTime(.05 + BURN.heat * .16, t, .2);
+    if (Math.random() < .04 + BURN.heat * .35) crackle(ac, t + Math.random() * .05, .04 + BURN.heat * .16 * Math.random());
+  } catch (e) {}
+}
+function burnAmbientStart() {
+  try {
+    const ac = burnAC(); if (BURN.snd) return;
+    const src = ac.createBufferSource(); src.buffer = BURN.noise; src.loop = true;
+    const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 420;
+    const g = ac.createGain(); g.gain.value = 0; src.connect(f); f.connect(g); g.connect(master); src.start();
+    BURN.snd = { src, g };
+  } catch (e) {}
+}
+function burnAmbientStop() {
+  if (!BURN.snd) return;
+  const { src, g } = BURN.snd; BURN.snd = null;
+  try { g.gain.setTargetAtTime(0, ac.currentTime, .15); setTimeout(() => { try { src.stop(); } catch (e) {} }, 600); } catch (e) {}
+}
+/* 震動：Android 用 vibrate；iPhone（iOS 18 起）用切換開關觸發觸覺回饋 */
+function haptic(ms = 18) {
+  try { if (navigator.vibrate && navigator.vibrate(ms)) return; } catch (e) {}
+  try { document.getElementById('hapt').click(); } catch (e) {}
+}
+/* ---------- 送一張入爐 ---------- */
+function burnOne(fromX, fromY, gesture) {
+  const s = burnStats(), L = burnLayout();
+  if (s.left <= 0) return false;
+  s.left--; s.total++; const day = twDay().s; s.days[day] = (s.days[day] || 0) + 1;
+  BURN.session++; BURN.byKind[BURN.kind] = (BURN.byKind[BURN.kind] || 0) + 1;
+  const m = L.mouth;
+  BURN.sheets.push({ ph: 'fly', kind: BURN.kind, t0: performance.now(), x0: fromX, y0: fromY, x: fromX, y: fromY,
+    tx: m.x + (Math.random() - .5) * m.w * .35, ty: m.y + m.h * .12, r0: 0, spin: (Math.random() - .5) * 1.6, sc: 1, rot: 0, hx: .2 + Math.random() * .6, hy: .55 + Math.random() * .4 });
+  BURN.floats.push({ txt: '功德 +1', x: m.x + (Math.random() - .5) * 40, y: m.y - m.h * .75, life: 0, max: 1.3, sz: 15, col: '#f6d98a' });
+  burnSnd('whoosh'); if (gesture !== false) haptic(BURN.auto ? 8 : 22);
+  if (s.left <= 0) {   // 一疊燒完，換新的一疊
+    s.stacks++;
+    BURN.floats.push({ txt: `第 ${s.stacks} 疊化畢`, x: L.stack.x, y: L.stack.y - 20, life: 0, max: 1.8, sz: 18, col: '#ffcf7a' });
+    setTimeout(() => { s.left = STACK_N; saveBurn(); burnUI(); }, 650);
+    if (BURN.auto) { clearInterval(BURN.auto); BURN.auto = 0; burnUI(); }
+  }
+  burnUI(); clearTimeout(BURN.saveT); BURN.saveT = setTimeout(saveBurn, 800);
+  return true;
+}
+function burnUI() {
+  const el = document.getElementById('burn'), s = burnStats(), L = burnLayout(), today = s.days[twDay().s] || 0;
+  el.querySelector('.stat').style.top = L.statY + 'px';
+  el.querySelector('.num span').textContent = s.total.toLocaleString();
+  el.querySelector('.l2').textContent = `${s.stacks} 疊送進火裡・今天 ${today.toLocaleString()} 張`;
+  el.querySelector('.hint').style.top = (L.stack.y - L.stack.h / 2 - 30) + 'px';
+  el.querySelector('.hint').style.display = BURN.session ? 'none' : '';
+  el.querySelector('.stack').textContent = BURN.auto ? '暫停' : `整疊化・剩 ${s.left}`;
+  el.querySelectorAll('.kinds button').forEach(b => b.classList.toggle('on', b.dataset.k === BURN.kind));
+}
+function burnResize() {
+  const el = document.getElementById('burn'), cv = el.querySelector('canvas');
+  BURN.W = innerWidth; BURN.H = innerHeight; BURN.dpr = Math.min(2, devicePixelRatio || 1);
+  cv.width = BURN.W * BURN.dpr; cv.height = BURN.H * BURN.dpr; if (BURN.on) burnUI();
+}
+function defaultKind(pid) { return pid === 'temple' ? 'kanjin' : 'dayin'; }
+function openBurn(pid = 'all', label) {
+  BURN.pid = pid; BURN.label = label || (pid === 'temple' ? '萬善爺' : '萬善同歸・水中先靈'); BURN.kind = defaultKind(pid);
+  BURN.session = 0; BURN.byKind = {}; BURN.sheets = []; BURN.floats = [];
+  const el = document.getElementById('burn');
+  el.querySelector('.to').textContent = `敬奉 ${BURN.label}`;
+  el.querySelector('.kinds').innerHTML = Object.entries(JOSS).map(([k, o]) => `<button data-k="${k}"><b>${o.name}</b><small>${o.for}</small></button>`).join('');
+  el.querySelectorAll('.kinds button').forEach(b => b.onclick = () => { BURN.kind = b.dataset.k; burnSnd('rustle'); burnUI(); });
+  burnStats(); burnResize(); BURN.on = true; el.classList.add('on'); burnUI();
+  burnAmbientStart(); BURN.heat = .5; BURN.last = 0; cancelAnimationFrame(BURN.raf); BURN.raf = requestAnimationFrame(burnFrame);
+}
+async function closeBurn() {
+  if (BURN.auto) { clearInterval(BURN.auto); BURN.auto = 0; }
+  BURN.on = false; cancelAnimationFrame(BURN.raf); burnAmbientStop(); saveBurn();
+  document.getElementById('burn').classList.remove('on');
+  const n = BURN.session; BURN.session = 0;
+  if (n) { const kinds = Object.keys(BURN.byKind).map(k => JOSS[k].name).join('、'); showMsg(`化${kinds} ${n} 張・願${BURN.pid === 'temple' ? '萬善爺庇佑 闔家平安' : '水中先靈 領受財帛 早登彼岸'}`, 3600); }
+}
+(() => {
+  const el = document.getElementById('burn'), cv = el.querySelector('canvas');
+  addEventListener('resize', () => { if (BURN.on) burnResize(); });
+  const pt = e => ({ x: e.clientX, y: e.clientY });
+  cv.addEventListener('pointerdown', e => {
+    const L = burnLayout(), p = pt(e);
+    if (p.y < L.mouth.y + L.mouth.h / 2 || burnStats().left <= 0) return;   // 從爐口以下任何地方往上滑都可以
+    cv.setPointerCapture(e.pointerId); burnAC();
+    BURN.drag = { x0: p.x, y0: p.y, x: p.x, y: p.y, t0: performance.now() }; burnSnd('rustle');
+  });
+  cv.addEventListener('pointermove', e => { if (BURN.drag) { const p = pt(e); BURN.drag.x = p.x; BURN.drag.y = p.y; } });
+  const up = e => {
+    const d = BURN.drag; if (!d) return; BURN.drag = null;
+    const L = burnLayout(), dy = d.y - d.y0, dt = Math.max(1, performance.now() - d.t0), v = dy / dt;
+    if (dy < -50 || (v < -.45 && dy < -15) || (Math.abs(dy) < 8 && Math.abs(d.x - d.x0) < 8 && dt < 400))   // 往上滑，或輕點一下
+      burnOne(L.stack.x + (d.x - d.x0) * .4, L.stack.y + Math.min(0, dy));
+  };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', () => { BURN.drag = null; });
+  el.querySelector('.x').onclick = closeBurn;
+  el.querySelector('.done').onclick = closeBurn;
+  el.querySelector('.stack').onclick = () => {
+    if (BURN.auto) { clearInterval(BURN.auto); BURN.auto = 0; burnUI(); return; }
+    burnAC(); haptic(30);
+    BURN.auto = setInterval(() => { const L = burnLayout(); if (!BURN.on || !burnOne(L.stack.x + (Math.random() - .5) * 20, L.stack.y, false)) { clearInterval(BURN.auto); BURN.auto = 0; burnUI(); } }, 140);
+    burnUI();
+  };
+  $('#burnbtn').onclick = () => { if (mode === 'overview') openBurn('field'); };
+  $('#wBurn').onclick = () => { if (mode === 'temple' && !IT.busy) openBurn('temple'); };
+})();
+
 </script>
 </body>
 </html>
