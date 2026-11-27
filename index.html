@@ -66,6 +66,13 @@
     letter-spacing:.06em;text-decoration:underline;text-underline-offset:4px}
   #cap{position:fixed;left:0;right:0;bottom:calc(16% + env(safe-area-inset-bottom));text-align:center;font-size:calc(18px*var(--ui));line-height:1.9;
     letter-spacing:.12em;padding:0 22px;pointer-events:none;opacity:0;transition:opacity 1.1s;text-shadow:0 0 12px #000,0 0 4px #000}
+  #lstyle{position:fixed;left:0;right:0;bottom:calc(92px*var(--ui) + env(safe-area-inset-bottom));display:none;justify-content:center;gap:6px;z-index:6;padding:0 8px;flex-wrap:wrap}
+  #lstyle button{pointer-events:auto;font:inherit;font-size:calc(13px*var(--ui));background:rgba(10,14,28,.6);color:#efe4cc;border:1px solid rgba(239,228,204,.35);
+    border-radius:1.2em;padding:.4em .9em;letter-spacing:.08em;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+  #lstyle button.on{background:linear-gradient(#c2483d,#8e2b23);border-color:#e3b14a;color:#fff3dc}
+  #lstyle button[data-ls="tech"].on{background:linear-gradient(#0e6a8a,#2a1a6a);border-color:#5ff0ff;color:#e8ffff;box-shadow:0 0 10px rgba(80,230,255,.6)}
+  #lstyle button[data-ls="lotus"].on{background:linear-gradient(#f2d2dc,#c98aa6);border-color:#f0d58a;color:#4a1a2a}
+  #lstyle button[data-ls="glass"].on{background:linear-gradient(#b8c8f0,#6a5ab0);border-color:#e8e0ff;color:#fff}
   #skip{position:fixed;top:calc(44px + env(safe-area-inset-top));right:12px;display:none;pointer-events:auto;background:rgba(10,14,28,.5);color:#efe4cc;
     border:1px solid rgba(239,228,204,.3);border-radius:1.4em;padding:.4em 1.1em;font:inherit;font-size:calc(12px*var(--ui));z-index:4}
   #fade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity 1.6s;z-index:3}
@@ -261,6 +268,7 @@
 <button id="back">← 返回</button>
 <div id="msg"></div>
 <div id="cap"></div>
+<div id="lstyle"><button data-ls="trad">傳統紙燈</button><button data-ls="lotus">典雅蓮花</button><button data-ls="tech">科技霓虹</button><button data-ls="glass">琉璃水晶</button></div>
 <button id="skip">跳過序章 ›</button>
 <div id="fade"></div>
 <div id="rp"><div class="panel">
@@ -1171,6 +1179,7 @@ function leaveIntro() {
 }
 let activeScene = scene;
 function beginAct3() {
+  showLStyle(false);
   $('#skip').style.display = 'none'; $('#cap').style.opacity = 0;
   stormAudioStop(); droneStop(); setHint('');
   activeScene = scene; mode = 'focusing';
@@ -1186,7 +1195,7 @@ $('#start3').addEventListener('click', () => { leaveIntro(); beginAct3(); });
 $('#skip').addEventListener('click', () => {
   if (mode === 'alms') { endAlms(); return; }
   if (mode === 'prologue') { P.done = true; $('#skip').style.display = 'none'; fade(1); setTimeout(() => { startAct2(); fade(0); }, 1700); }
-  else if (mode === 'act2') { A2.done = true; capsCancel(); $('#skip').style.display = 'none'; fade(1); setTimeout(() => { beginAct3(); fade(0); }, 1700); }
+  else if (mode === 'act2') { A2.done = true; showLStyle(false); capsCancel(); $('#skip').style.display = 'none'; fade(1); setTimeout(() => { beginAct3(); fade(0); }, 1700); }
 });
 
 function enterFocus(i) {
@@ -1853,18 +1862,86 @@ const M_RAFT = new THREE.MeshStandardMaterial({ color: 0x6a4a2a, roughness: 1 })
 const M_BODY = new THREE.MeshStandardMaterial({ map: lanternTex, emissive: 0xffffff, emissiveMap: lanternTex, emissiveIntensity: 1.1 });
 const M_ROOF = new THREE.MeshStandardMaterial({ color: 0xb02a20, emissive: 0x6a1408, roughness: .8 });
 const M_REFL = new THREE.MeshBasicMaterial({ map: GLOW, color: 0xff9a50, transparent: true, opacity: .55, blending: THREE.AdditiveBlending, depthWrite: false });
-function makeLantern() {
-  const g = new THREE.Group();
-  const raft = new THREE.Mesh(L_RAFT, M_RAFT); raft.position.y = .04;
-  const body = new THREE.Mesh(L_BODY, M_BODY); body.position.y = .26;
-  const roof = new THREE.Mesh(L_ROOF, M_ROOF); roof.position.y = .57;
-  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW, color: 0xffa050, transparent: true, opacity: .9, blending: THREE.AdditiveBlending, depthWrite: false }));
-  glow.scale.set(1.6, 1.6, 1); glow.position.y = .3;
-  g.add(raft, body, roof, glow);
-  const refl = new THREE.Mesh(L_REFL, M_REFL); refl.position.y = .01;
-  aScene.add(g, refl);
-  return { g, refl, vel: new V3(), age: 0, free: false, soulT: 0, ph: Math.random() * 6 };
+/* 水燈樣式：傳統紙燈、典雅蓮花、科技霓虹、琉璃水晶 */
+const LSTYLE = { trad: 0xffa050, lotus: 0xffb8c8, tech: 0x40e8ff, glass: 0xb8a8ff };
+let lanternStyle = 'trad'; try { lanternStyle = localStorage.getItem('qsz-lantern') || 'trad'; } catch (e) {}
+if (!LSTYLE[lanternStyle]) lanternStyle = 'trad';
+const L_PETAL = (() => { const g = new THREE.SphereGeometry(1, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2); g.scale(.075, .24, .035); return g; })();
+const M_PETAL_O = new THREE.MeshStandardMaterial({ color: 0xfbeef2, emissive: 0xffc8d8, emissiveIntensity: .55, roughness: .6, side: THREE.DoubleSide });
+const M_PETAL_I = new THREE.MeshStandardMaterial({ color: 0xf2a8c0, emissive: 0xff8ab0, emissiveIntensity: .7, roughness: .6, side: THREE.DoubleSide });
+const M_PAD = new THREE.MeshStandardMaterial({ color: 0x2f6a3a, roughness: .8, side: THREE.DoubleSide });
+const M_GOLD = new THREE.MeshStandardMaterial({ color: 0xe8c060, metalness: .8, roughness: .3, emissive: 0x6a4a10, emissiveIntensity: .5 });
+const M_CANDLE = new THREE.MeshStandardMaterial({ color: 0xfff6e0, emissive: 0xffe0a0, emissiveIntensity: .8 });
+const M_TECH_BASE = new THREE.MeshStandardMaterial({ color: 0x10131c, metalness: .7, roughness: .25 });
+const M_TECH_GLASS = new THREE.MeshStandardMaterial({ color: 0x80e8ff, transparent: true, opacity: .16, emissive: 0x2090c0, emissiveIntensity: .5, side: THREE.DoubleSide, depthWrite: false });
+const M_TECH_NEON = new THREE.MeshBasicMaterial({ color: 0x5ff0ff });
+const M_TECH_MAG = new THREE.MeshBasicMaterial({ color: 0xff4ad8 });
+const M_TECH_LINE = new THREE.LineBasicMaterial({ color: 0x8ff6ff, transparent: true, opacity: .9 });
+const M_CRYSTAL = new THREE.MeshStandardMaterial({ color: 0xc8c0ff, emissive: 0x8a70ff, emissiveIntensity: .9, transparent: true, opacity: .72, roughness: .05, metalness: .1, flatShading: true });
+const M_CRYSTAL_IN = new THREE.MeshBasicMaterial({ color: 0xfff4ff });
+function lanternBody(style, g) {   // 回傳每幀要動的部件
+  const spin = [];
+  if (style === 'lotus') {   // 荷葉托著三層蓮瓣，中間一支白燭
+    const pad = new THREE.Mesh(new THREE.CircleGeometry(.42, 24, .25, Math.PI * 2 - .5), M_PAD); pad.rotation.x = -Math.PI / 2; pad.position.y = .02; g.add(pad);
+    [[10, .2, .9, M_PETAL_O, 1.25], [8, .13, .55, M_PETAL_I, 1.0], [6, .06, .3, M_PETAL_I, .75]].forEach(([n, r, tilt, m, sc], ring) => {
+      for (let k = 0; k < n; k++) {
+        const a = (k + ring * .5) / n * Math.PI * 2, p = new THREE.Mesh(L_PETAL, m);
+        p.scale.setScalar(sc); p.position.set(Math.cos(a) * r, .05 + ring * .02, Math.sin(a) * r);
+        p.rotation.set(0, -a + Math.PI / 2, 0); p.rotateX(tilt); g.add(p);
+      }
+    });
+    const ringG = new THREE.Mesh(new THREE.TorusGeometry(.07, .008, 6, 24), M_GOLD); ringG.rotation.x = Math.PI / 2; ringG.position.y = .1; g.add(ringG);
+    const candle = new THREE.Mesh(new THREE.CylinderGeometry(.03, .03, .16, 10), M_CANDLE); candle.position.y = .17; g.add(candle);
+    const fl = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW, color: 0xffd080, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+    fl.scale.set(.18, .28, 1); fl.position.y = .3; g.add(fl); spin.push(T => fl.scale.set(.16 + Math.sin(T * 13) * .02, .26 + Math.sin(T * 17) * .04, 1));
+  } else if (style === 'tech') {   // 黑曜底盤＋霓虹光環、六角玻璃燈罩、懸浮旋轉的發光核心
+    const base = new THREE.Mesh(new THREE.CylinderGeometry(.34, .38, .07, 6), M_TECH_BASE); base.position.y = .035; g.add(base);
+    const halo = new THREE.Mesh(new THREE.TorusGeometry(.36, .014, 6, 6), M_TECH_NEON); halo.rotation.x = Math.PI / 2; halo.rotation.z = Math.PI / 6; halo.position.y = .075; g.add(halo);
+    const shellG = new THREE.CylinderGeometry(.22, .26, .46, 6, 1, true), shell = new THREE.Mesh(shellG, M_TECH_GLASS); shell.position.y = .31; g.add(shell);
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.CylinderGeometry(.22, .26, .46, 6)), M_TECH_LINE); edges.position.y = .31; g.add(edges);
+    const core = new THREE.Mesh(new THREE.IcosahedronGeometry(.08, 0), M_TECH_MAG); core.position.y = .3; g.add(core);
+    const orbit = new THREE.Mesh(new THREE.TorusGeometry(.14, .006, 4, 32), M_TECH_NEON); orbit.position.y = .3; g.add(orbit);
+    const cap = new THREE.Mesh(new THREE.TorusGeometry(.2, .01, 4, 6), M_TECH_NEON); cap.rotation.x = Math.PI / 2; cap.rotation.z = Math.PI / 6; cap.position.y = .56; g.add(cap);
+    spin.push((T) => { core.rotation.set(T * 1.6, T * 2.1, 0); core.position.y = .3 + Math.sin(T * 2.4) * .03; orbit.rotation.set(Math.PI / 2 + Math.sin(T) * .6, T * 1.3, 0);
+      const k = .6 + .4 * Math.sin(T * 3); M_TECH_NEON.color.setRGB(.37 * k + .2, .94, 1); });
+  } else if (style === 'glass') {   // 金色蓮座托一顆琉璃水晶，內有一點白光
+    const seat = new THREE.Mesh(new THREE.CylinderGeometry(.22, .3, .08, 16), M_GOLD); seat.position.y = .04; g.add(seat);
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(.24, .02, 8, 32), M_GOLD); rim.rotation.x = Math.PI / 2; rim.position.y = .09; g.add(rim);
+    const cg = new THREE.OctahedronGeometry(.2, 0); cg.scale(1, 1.6, 1);
+    const crystal = new THREE.Mesh(cg, M_CRYSTAL); crystal.position.y = .42; g.add(crystal);
+    const inner = new THREE.Mesh(new THREE.OctahedronGeometry(.06, 0), M_CRYSTAL_IN); inner.position.y = .42; g.add(inner);
+    spin.push(T => { crystal.rotation.y = T * .6; inner.rotation.y = -T * 1.5; });
+  } else {
+    const raft = new THREE.Mesh(L_RAFT, M_RAFT); raft.position.y = .04;
+    const body = new THREE.Mesh(L_BODY, M_BODY); body.position.y = .26;
+    const roof = new THREE.Mesh(L_ROOF, M_ROOF); roof.position.y = .57;
+    g.add(raft, body, roof);
+  }
+  return spin;
 }
+function makeLantern(style = lanternStyle) {
+  const g = new THREE.Group(), col = LSTYLE[style];
+  const spin = lanternBody(style, g);
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: GLOW, color: col, transparent: true, opacity: .9, blending: THREE.AdditiveBlending, depthWrite: false }));
+  glow.scale.set(1.6, 1.6, 1); glow.position.y = .3; g.add(glow);
+  const refl = new THREE.Mesh(L_REFL, style === 'trad' ? M_REFL : M_REFL.clone()); refl.material.color.setHex(col); refl.position.y = .01;
+  aScene.add(g, refl);
+  return { g, refl, vel: new V3(), age: 0, free: false, soulT: 0, ph: Math.random() * 6, spin, style };
+}
+function setLanternStyle(st) {
+  lanternStyle = st; try { localStorage.setItem('qsz-lantern', st); } catch (e) {}
+  document.querySelectorAll('#lstyle button').forEach(b => b.classList.toggle('on', b.dataset.ls === st));
+  const L = A2.cur;   // 還沒放出去的那盞，換成新樣式
+  if (L && !L.free) {
+    aScene.remove(L.g, L.refl);
+    const N2 = makeLantern(st); N2.g.position.copy(L.g.position); N2.g.scale.setScalar(.3);
+    A2.lanterns[A2.lanterns.indexOf(L)] = N2; A2.cur = N2;
+  }
+  if (ac) bell(st === 'tech' ? 1175 : st === 'glass' ? 1318 : st === 'lotus' ? 880 : 659);
+}
+document.querySelectorAll('#lstyle button').forEach(b => b.addEventListener('click', () => setLanternStyle(b.dataset.ls)));
+document.querySelectorAll('#lstyle button').forEach(b => b.classList.toggle('on', b.dataset.ls === lanternStyle));
+const showLStyle = v => { $('#lstyle').style.display = v ? 'flex' : 'none'; };
 const rings = [];
 function ripple(x, z) {
   const m = new THREE.Mesh(new THREE.RingGeometry(.3, .38, 32), new THREE.MeshBasicMaterial({ color: 0xffd0a0, transparent: true, opacity: .6, blending: THREE.AdditiveBlending, depthWrite: false }));
@@ -1917,7 +1994,7 @@ function startAct2() {
   droneStart(); a2Count(); horn();
   playCaps([['a0', 3.5], ['a1', 4], ['a2', 4]], () => {
     if (A2.done) return;
-    A2.phase = 'play'; A2.spawnAt = A2.t; setHint('手指往上滑，把水燈推向水面'); narrate('a5');
+    A2.phase = 'play'; A2.spawnAt = A2.t; setHint('選一種水燈，手指往上滑推向水面'); narrate('a5'); showLStyle(true);
   });
 }
 function act2Swipe(dx, dy, dt) {
@@ -1930,7 +2007,7 @@ function act2Swipe(dx, dy, dt) {
   A2.released++; a2Count(); setHint('');
   if (A2.released < A2.total) A2.spawnAt = A2.t + 1.3;
   else {
-    A2.phase = 'outro';
+    A2.phase = 'outro'; showLStyle(false);
     capTimers.push(setTimeout(() => {
       if (A2.done) return;
       playCaps([['a3', 4], ['a4', 4]], () => {
@@ -1964,6 +2041,7 @@ function updateAct2(dt) {
     g.rotation.set(Math.sin(T * 1.3 + L.ph) * .06, L.ph + T * .08 * (L.free ? 1 : 0), Math.sin(T * 1.1 + L.ph) * .06);
     L.refl.position.set(x, .01, z);
     L.refl.material.opacity = .55;
+    if (L.spin) L.spin.forEach(f => f(T + L.ph));
     if (z < -75) { aScene.remove(g, L.refl); A2.lanterns.splice(i, 1); }
   }
   for (let i = rings.length - 1; i >= 0; i--) {
